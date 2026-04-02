@@ -271,3 +271,67 @@ Config.HospitalBlip = {
     color  = 49,
     scale  = 0.8,
 }
+
+--[[
+    EMS RESEARCH / TIER PROGRESSION
+]]
+Config.EMSResearch = {
+    -- Tier definitions: label, XP threshold, unlock slots per tier
+    tiers = {
+        { tier = 1, label = 'EMT',               xpRequired = 0,    unlockSlots = 0 },
+        { tier = 2, label = 'Paramedic',          xpRequired = 500,  unlockSlots = 2 },
+        { tier = 3, label = 'Senior Paramedic',   xpRequired = 1500, unlockSlots = 2 },
+        { tier = 4, label = 'Lead Medic',         xpRequired = 3500, unlockSlots = 2 },
+        { tier = 5, label = 'Chief of Medicine',  xpRequired = 7000, unlockSlots = 2 },
+    },
+
+    -- XP awarded per action
+    xpRewards = {
+        revive          = 75,
+        treat           = 30,
+        transport       = 50,   -- load + deliver patient to hospital
+        dutyPassive     = 10,   -- every 5 minutes on duty
+        firstResponder  = 25,   -- respond to dispatch within window
+    },
+
+    dutyPassiveInterval = 300,   -- seconds between passive XP ticks
+    dispatchWindowSecs  = 180,   -- seconds after dispatch to earn firstResponder bonus
+    handsOnlyCooldown   = 180,   -- seconds between hands-only revives (Tier 5)
+    mentorDuration      = 1800,  -- seconds a mentor boost lasts (30 min)
+    administerCooldown  = 600,   -- seconds between administer_meds uses (Tier 3)
+
+    -- Ability definitions (3 per tier, player picks 2)
+    abilities = {
+        -- ── Tier 2 ──────────────────────────────────────────────────────
+        rapid_revive    = { tier = 2, label = 'Rapid Revive',
+                            desc  = 'Revive speed reduced by 30%' },
+        patient_examine = { tier = 2, label = 'Patient Examination',
+                            desc  = 'Examine downed players: see injuries, stress, addiction' },
+        dispatch_intel  = { tier = 2, label = 'Dispatch Intel',
+                            desc  = 'Dispatch alerts show street name and injury type' },
+
+        -- ── Tier 3 ──────────────────────────────────────────────────────
+        administer_meds = { tier = 3, label = 'Med Administration',
+                            desc  = 'Administer morphine/painkiller directly to patient (no item, 10 min CD)' },
+        iv_therapy      = { tier = 3, label = 'IV Therapy',
+                            desc  = 'Treatment restores 75 HP to the target' },
+        trauma_splint   = { tier = 3, label = 'Trauma Splint',
+                            desc  = 'Treat fractures without needing a splint item' },
+
+        -- ── Tier 4 ──────────────────────────────────────────────────────
+        full_surgery    = { tier = 4, label = 'Full Surgery',
+                            desc  = 'Clear ALL injuries on a patient (20 s procedure)' },
+        adrenaline_revive={ tier = 4, label = 'Adrenaline Revive',
+                            desc  = 'Revived player receives a 20 s adrenaline boost' },
+        advanced_carry  = { tier = 4, label = 'Advanced Carry',
+                            desc  = 'Sprint while carrying a downed patient' },
+
+        -- ── Tier 5 ──────────────────────────────────────────────────────
+        hands_only_revive={ tier = 5, label = 'Hands-Only Revive',
+                            desc  = 'Revive without a defibrillator (3 min cooldown)' },
+        mentor_boost    = { tier = 5, label = 'Mentor',
+                            desc  = 'Temporarily boost a Tier-1 EMS to Tier-2 abilities for 30 min' },
+        mass_casualty   = { tier = 5, label = 'Mass Casualty Alert',
+                            desc  = 'Broadcast a mass-casualty emergency to all online EMS' },
+    },
+}

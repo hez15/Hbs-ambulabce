@@ -108,3 +108,36 @@ function DB.UpdateAddictionLevel(citizenid, substance, level)
         { level, citizenid, substance }
     )
 end
+
+-- ── EMS Research ──────────────────────────────────────────────────────────
+
+function DB.LoadEMSResearch(citizenid)
+    local row = MySQL.single.await(
+        'SELECT tier, xp, unlocks FROM hbs_ems_research WHERE citizenid = ?',
+        { citizenid }
+    )
+    if not row then return { tier = 1, xp = 0, unlocks = {} } end
+    local unlocks = {}
+    if row.unlocks and row.unlocks ~= '' then
+        unlocks = json.decode(row.unlocks) or {}
+    end
+    return { tier = row.tier, xp = row.xp, unlocks = unlocks }
+end
+
+function DB.SaveEMSResearch(citizenid, tier, xp, unlocks)
+    local unlocksJson = json.encode(unlocks or {})
+    MySQL.query.await([[
+        INSERT INTO hbs_ems_research (citizenid, tier, xp, unlocks)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE tier = ?, xp = ?, unlocks = ?
+    ]], { citizenid, tier, xp, unlocksJson, tier, xp, unlocksJson })
+end
+
+function DB.AddEMSUnlock(citizenid, ability)
+    local data = DB.LoadEMSResearch(citizenid)
+    if not Utils.TableContains(data.unlocks, ability) then
+        table.insert(data.unlocks, ability)
+        DB.SaveEMSResearch(citizenid, data.tier, data.xp, data.unlocks)
+    end
+    return data.unlocks
+end

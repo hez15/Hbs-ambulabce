@@ -51,6 +51,16 @@ CreateThread(function()
             PRIMARY KEY (`citizenid`, `substance`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ]])
+    MySQL.query([[
+        CREATE TABLE IF NOT EXISTS `hbs_ems_research` (
+            `citizenid`  VARCHAR(50) NOT NULL,
+            `tier`       TINYINT     NOT NULL DEFAULT 1,
+            `xp`         INT         NOT NULL DEFAULT 0,
+            `unlocks`    TEXT        NULL,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`citizenid`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ]])
     Utils.Debug('hbs_ambulance: DB tables ready')
 end)
 
@@ -75,6 +85,13 @@ AddEventHandler('QBCore:Server:PlayerLoaded', function(Player)
     SB.Set(src, 'stress',    stress)
     SB.Set(src, 'isDowned',  false)
     SB.Set(src, 'addiction', addLevel)
+
+    -- Load EMS research data for all players (non-EMS will just have default values)
+    local emsData = DB.LoadEMSResearch(cid)
+    SB.Set(src, 'emsTier',    emsData.tier)
+    SB.Set(src, 'emsXP',      emsData.xp)
+    SB.Set(src, 'emsUnlocks', emsData.unlocks)
+    SB.Set(src, 'onDuty',     false)
 
     -- Schedule withdrawal timers for existing addictions
     TriggerEvent('hbs_ambulance:server:scheduleWithdrawal', src, cid, addictions)
@@ -118,10 +135,18 @@ lib.callback.register('hbs_ambulance:getPlayerState', function(source)
     SB.Set(src, 'stress',    stress)
     SB.Set(src, 'addiction', addLevel)
 
+    local emsData = DB.LoadEMSResearch(cid)
+    SB.Set(src, 'emsTier',    emsData.tier)
+    SB.Set(src, 'emsXP',      emsData.xp)
+    SB.Set(src, 'emsUnlocks', emsData.unlocks)
+
     return {
-        isDowned = SB.Get(src, 'isDowned') or false,
-        injuries = injuries,
-        stress   = stress,
-        addiction= addLevel,
+        isDowned   = SB.Get(src, 'isDowned') or false,
+        injuries   = injuries,
+        stress     = stress,
+        addiction  = addLevel,
+        emsTier    = emsData.tier,
+        emsXP      = emsData.xp,
+        emsUnlocks = emsData.unlocks,
     }
 end)

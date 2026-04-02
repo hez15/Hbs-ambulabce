@@ -165,6 +165,13 @@ SB.Keys = {
     inPain     = 'hbs:inPain',
     bloodloss  = 'hbs:bloodloss',
     addiction  = 'hbs:addiction',
+    -- EMS research progression
+    emsTier    = 'hbs:emsTier',
+    emsXP      = 'hbs:emsXP',
+    emsUnlocks = 'hbs:emsUnlocks',
+    onDuty     = 'hbs:onDuty',
+    -- Temporary mentor boost (set on boosted EMS)
+    mentorTier = 'hbs:mentorTier',
 }
 
 -- Client-side: set own player state bag (broadcast = true for cross-client sync)
