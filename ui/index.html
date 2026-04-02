@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HBS Ambulance HUD</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     MEDICAL HUD — bottom-left corner
+═══════════════════════════════════════════════════════ -->
+<div id="medical-hud" class="hidden">
+
+    <!-- Body diagram -->
+    <div id="body-diagram">
+        <div class="bp-row">
+            <div class="body-part full-width" id="bp-head" data-part="head">HEAD</div>
+        </div>
+        <div class="bp-row">
+            <div class="body-part" id="bp-left_arm"  data-part="left_arm">L.ARM</div>
+            <div class="body-part" id="bp-torso"     data-part="torso">TORSO</div>
+            <div class="body-part" id="bp-right_arm" data-part="right_arm">R.ARM</div>
+        </div>
+        <div class="bp-row">
+            <div class="body-part" id="bp-left_leg"  data-part="left_leg">L.LEG</div>
+            <div class="body-part spacer"></div>
+            <div class="body-part" id="bp-right_leg" data-part="right_leg">R.LEG</div>
+        </div>
+    </div>
+
+    <!-- Stress bar -->
+    <div class="hud-row">
+        <span class="hud-label">STRESS</span>
+        <div class="bar-bg">
+            <div id="stress-fill" class="bar-fill stress-fill"></div>
+        </div>
+        <span id="stress-val" class="hud-val">0</span>
+    </div>
+
+    <!-- Addiction indicator (shown when any substance > 0) -->
+    <div id="addiction-row" class="hud-row hidden">
+        <span class="hud-label">DEPEND.</span>
+        <div class="bar-bg">
+            <div id="addiction-fill" class="bar-fill addiction-fill"></div>
+        </div>
+        <span id="addiction-val" class="hud-val">0</span>
+    </div>
+
+    <!-- Status icons -->
+    <div id="status-icons">
+        <span id="icon-bloodloss" class="icon hidden" title="Bloodloss">🩸</span>
+        <span id="icon-pain"      class="icon hidden" title="Pain Suppressed">💊</span>
+        <span id="icon-withdraw"  class="icon hidden" title="Withdrawal">🥵</span>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     DEATH SCREEN — full overlay
+═══════════════════════════════════════════════════════ -->
+<div id="death-screen" class="hidden">
+    <div id="death-box">
+        <h1 id="death-title">YOU ARE DOWN</h1>
+        <p  id="death-sub">Wait for EMS or respawn at the hospital</p>
+
+        <!-- Timer -->
+        <div id="timer-block">
+            <span id="timer-label">Bleedout in</span>
+            <span id="timer-value">5:00</span>
+        </div>
+
+        <!-- Last words -->
+        <div id="will-block">
+            <textarea id="will-input" maxlength="280"
+                placeholder="Leave your last words..."></textarea>
+        </div>
+
+        <!-- Respawn button -->
+        <div id="btn-block">
+            <button class="death-btn" id="btn-respawn" onclick="onRespawn()">
+                Respawn at Hospital
+            </button>
+        </div>
+
+        <!-- Force respawn (when timer expires) -->
+        <div id="force-block" class="hidden">
+            <p>You have died.</p>
+            <button class="death-btn danger" onclick="onRespawn()">
+                Confirm Respawn
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

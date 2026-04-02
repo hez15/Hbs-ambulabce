@@ -1,0 +1,301 @@
+/* ════════════════════════════════════════════════════════════
+   HBS Ambulance HUD — Stylesheet
+   ════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: transparent;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    user-select: none;
+}
+
+.hidden { display: none !important; }
+
+/* ════════════════════════
+   MEDICAL HUD
+   ════════════════════════ */
+
+#medical-hud {
+    position: fixed;
+    bottom: 44px;
+    left: 18px;
+    width: 195px;
+    background: rgba(8, 8, 12, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    padding: 10px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+}
+
+/* ── Body diagram ── */
+
+#body-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bp-row {
+    display: flex;
+    gap: 4px;
+}
+
+.body-part {
+    flex: 1;
+    background: rgba(30, 200, 80, 0.18);
+    border: 1px solid rgba(30, 200, 80, 0.35);
+    border-radius: 5px;
+    padding: 4px 2px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: #9dffb0;
+    text-align: center;
+    transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.body-part.full-width { flex: 3; }
+.body-part.spacer { background: transparent; border-color: transparent; }
+
+/* Severity states */
+.body-part[data-severity="scratch"] {
+    background: rgba(255, 235, 59, 0.22);
+    border-color: rgba(255, 235, 59, 0.55);
+    color: #fff8a0;
+}
+.body-part[data-severity="minor"] {
+    background: rgba(255, 152, 0, 0.28);
+    border-color: rgba(255, 152, 0, 0.65);
+    color: #ffd180;
+}
+.body-part[data-severity="fracture"] {
+    background: rgba(244, 67, 54, 0.32);
+    border-color: rgba(244, 67, 54, 0.75);
+    color: #ffab91;
+}
+.body-part[data-severity="critical"] {
+    background: rgba(183, 28, 28, 0.55);
+    border-color: rgba(255, 23, 68, 0.90);
+    color: #ff6e6e;
+    animation: pulse-crit 1.1s ease-in-out infinite;
+}
+@keyframes pulse-crit {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+
+/* ── Bars ── */
+
+.hud-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hud-label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.4);
+    white-space: nowrap;
+    min-width: 46px;
+}
+
+.bar-bg {
+    flex: 1;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.09);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+.stress-fill {
+    background: linear-gradient(90deg, #00e676 0%, #ffea00 50%, #f44336 100%);
+}
+
+.addiction-fill {
+    background: linear-gradient(90deg, #ce93d8 0%, #9c27b0 60%, #6a0080 100%);
+}
+
+.hud-val {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.55);
+    min-width: 20px;
+    text-align: right;
+}
+
+/* ── Status icons ── */
+
+#status-icons {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-start;
+}
+
+.icon {
+    font-size: 13px;
+    line-height: 1;
+    opacity: 0.9;
+    animation: icon-pop 0.3s ease;
+}
+
+@keyframes icon-pop {
+    0%  { transform: scale(0.5); }
+    60% { transform: scale(1.2); }
+    100%{ transform: scale(1.0); }
+}
+
+/* ════════════════════════
+   DEATH SCREEN
+   ════════════════════════ */
+
+#death-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: all;
+    animation: fade-in-death 0.8s ease forwards;
+}
+
+@keyframes fade-in-death {
+    from { opacity: 0; background: rgba(120, 0, 0, 0.5); }
+    to   { opacity: 1; background: rgba(0, 0, 0, 0.88); }
+}
+
+#death-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    max-width: 520px;
+    width: 90%;
+    padding: 42px 40px;
+    background: rgba(15, 0, 0, 0.75);
+    border: 1px solid rgba(200, 0, 0, 0.35);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    text-align: center;
+    color: #fff;
+}
+
+#death-title {
+    font-size: 42px;
+    font-weight: 900;
+    color: #e53935;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(229, 57, 53, 0.7);
+}
+
+#death-sub {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.3px;
+}
+
+#timer-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+#timer-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#timer-value {
+    font-size: 48px;
+    font-weight: 700;
+    color: #ef9a9a;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+#will-block {
+    width: 100%;
+}
+
+#will-input {
+    width: 100%;
+    height: 72px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 12px;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+#will-input:focus {
+    border-color: rgba(229, 57, 53, 0.5);
+}
+
+#will-input::placeholder {
+    color: rgba(255, 255, 255, 0.28);
+}
+
+.death-btn {
+    padding: 14px 32px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #c62828;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(198, 40, 40, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.death-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(198, 40, 40, 0.65);
+}
+
+.death-btn.danger {
+    background: #7b0000;
+    box-shadow: 0 4px 16px rgba(123, 0, 0, 0.55);
+}
+
+#force-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+}
