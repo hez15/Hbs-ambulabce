@@ -24,13 +24,27 @@ end
 -- ── Revive ────────────────────────────────────────────────────────────────
 
 local function Revive(targetSrc, targetPed)
-    if HasUnlock('hands_only_revive') and
-       (not Config.ReviveRequiresItem or exports.ox_inventory:Search('count', Config.ReviveItem) < 1)
-    then
-        if HandsOnlyRevive then HandsOnlyRevive(targetSrc) end
+    -- Hands-only revive unlock: skip item check, trigger dedicated server event
+    if HasUnlock('hands_only_revive') then
+        RequestAnimDict('mini@repair')
+        while not HasAnimDictLoaded('mini@repair') do Wait(10) end
+        local reviveTime = GetReviveTime and GetReviveTime() or Config.ReviveTime
+        lib.progressBar({
+            duration     = reviveTime * 1000,
+            label        = Locale('revive_progress'),
+            useWhileDead = false,
+            canCancel    = true,
+            anim         = { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 16 },
+        }, function(completed)
+            if completed then
+                TriggerServerEvent('hbs_ambulance:server:handsOnlyRevive', targetSrc)
+                if CheckFirstResponder then CheckFirstResponder(targetSrc) end
+            end
+        end)
         return
     end
 
+    -- Standard revive: optionally require defibrillator item
     if Config.ReviveRequiresItem then
         if exports.ox_inventory:Search('count', Config.ReviveItem) < 1 then
             Notify(Locale('revive_no_item'), 'error')

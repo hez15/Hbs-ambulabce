@@ -20,9 +20,11 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName, data)
 
         DownedPlayers[targetSrc] = nil
         SB.Set(targetSrc, 'isDowned', false)
+        SB.Set(targetSrc, 'triage',   nil)
         DB.ClearInjuries(targetCid)
         SB.Set(targetSrc, 'injuries', {})
         TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
+        TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc)
         TriggerEvent('hbs_ambulance:server:broadcastDownedBlips')
         return
     end

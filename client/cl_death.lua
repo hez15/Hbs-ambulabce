@@ -67,7 +67,12 @@ local function DoRespawn(willText)
     lastStandActive = false
     deathTimerThread = nil
     HideDeathScreen()
-    SetPlayerSprint(PlayerPedId(), true)
+
+    local ped = PlayerPedId()
+    SetEntityInvincible(ped, false)
+    ClearPedTasksImmediately(ped)
+    SetPlayerSprint(ped, true)
+
     TriggerServerEvent('hbs_ambulance:server:requestRespawn', willText or '')
 end
 
@@ -89,9 +94,17 @@ local function StartLastStand()
     lastStandActive = true
     SetDowned(true)
 
+    local ped = PlayerPedId()
+
+    -- Keep ped alive in GTA's eyes — prevents death ragdoll / respawn screen
+    SetEntityInvincible(ped, true)
+    if GetEntityHealth(ped) <= 100 then
+        SetEntityHealth(ped, 101)
+    end
+
     -- Disable sprint, play writhe animation
-    SetPlayerSprint(PlayerPedId(), false)
-    TaskWrithe(PlayerPedId(), PlayerPedId(), Config.LastStandTime * 1000, 0)
+    SetPlayerSprint(ped, false)
+    TaskWrithe(ped, ped, Config.LastStandTime * 1000, 0)
     Notify(Locale('last_stand_msg'), 'warning', 6000)
 
     -- Show screen — timer counts down the full window (last stand + bleedout)
@@ -146,8 +159,13 @@ RegisterNetEvent('hbs_ambulance:client:revived', function()
     deathTimerThread = nil
     SetDowned(false)
     HideDeathScreen()
-    SetPlayerSprint(PlayerPedId(), true)
-    SetEntityHealth(PlayerPedId(), 200)
+
+    local ped = PlayerPedId()
+    SetEntityInvincible(ped, false)     -- re-enable damage
+    ClearPedTasksImmediately(ped)       -- snap out of writhe/death animation
+    SetPlayerSprint(ped, true)
+    SetEntityHealth(ped, 200)
+
     TriggerEvent('hbs_ambulance:client:clearInjuries')
     Notify(Locale('revive_success'), 'success')
 end)
@@ -158,6 +176,7 @@ RegisterNetEvent('hbs_ambulance:client:respawnAt', function(coords)
     DoScreenFadeOut(500)
     Wait(600)
     local ped = PlayerPedId()
+    ClearPedTasksImmediately(ped)
     SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, true)
     SetEntityHeading(ped, coords.w or 0.0)
     SetEntityHealth(ped, 200)
