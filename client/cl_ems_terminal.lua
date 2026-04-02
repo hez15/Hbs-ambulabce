@@ -43,10 +43,7 @@ local function AttachTerminalTarget(prop, hospitalName)
             distance    = Config.EMSResearch.terminalRadius,
             canInteract = function() return IsEMS() end,
             onSelect    = function()
-                -- OpenResearchMenu is defined in cl_ems_research.lua
-                if OpenResearchMenu then
-                    OpenResearchMenu()
-                end
+                if OpenEMSResearchMenu then OpenEMSResearchMenu() end
             end,
         },
     })

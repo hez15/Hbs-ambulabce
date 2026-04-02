@@ -26,6 +26,11 @@ const $ = id => document.getElementById(id);
 const PARTS = ['head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg'];
 
 function renderBodyParts(injuries) {
+    const anyInjury = Object.keys(injuries || {}).some(k => injuries[k]);
+    // Dim silhouette when fully healthy; brighten when any injury present
+    const svg = $('body-svg');
+    if (svg) svg.style.opacity = anyInjury ? '1' : '0.35';
+
     PARTS.forEach(part => {
         const el  = $('bp-' + part);
         if (!el) return;

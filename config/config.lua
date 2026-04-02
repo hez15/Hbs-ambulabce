@@ -58,11 +58,12 @@ Config.InjurySeverity = {
 }
 
 -- Damage thresholds → injury severity
+-- GTA punches deal ~5-15 HP; raised minimums so fistfights give scratches/minor only
 Config.DamageThresholds = {
-    { min = 1,  max = 10, severity = 'scratch'  },
-    { min = 11, max = 30, severity = 'minor'    },
-    { min = 31, max = 60, severity = 'fracture' },
-    { min = 61, max = 999,severity = 'critical' },
+    { min = 1,  max = 18,  severity = 'scratch'  },
+    { min = 19, max = 40,  severity = 'minor'    },
+    { min = 41, max = 70,  severity = 'fracture' },
+    { min = 71, max = 999, severity = 'critical' },
 }
 
 -- Effects per body part + severity (keys must match InjuryDefs.BoneMap snake_case output)

@@ -132,6 +132,12 @@ CreateThread(function()
     end
 end)
 
+-- ── Reset damage tracker on load (prevents false injury on spawn) ─────────
+
+AddEventHandler('hbs_ambulance:client:stateLoaded', function()
+    lastDmgHealth = GetEntityHealth(PlayerPedId())
+end)
+
 -- ── Public API ─────────────────────────────────────────────────────────────
 
 -- Heal a specific body part (optionally only for certain severities)

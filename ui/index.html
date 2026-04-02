@@ -13,21 +13,29 @@
 ═══════════════════════════════════════════════════════ -->
 <div id="medical-hud" class="hidden">
 
-    <!-- Body diagram -->
+    <!-- Body diagram — SVG human silhouette -->
     <div id="body-diagram">
-        <div class="bp-row">
-            <div class="body-part full-width" id="bp-head" data-part="head">HEAD</div>
-        </div>
-        <div class="bp-row">
-            <div class="body-part" id="bp-left_arm"  data-part="left_arm">L.ARM</div>
-            <div class="body-part" id="bp-torso"     data-part="torso">TORSO</div>
-            <div class="body-part" id="bp-right_arm" data-part="right_arm">R.ARM</div>
-        </div>
-        <div class="bp-row">
-            <div class="body-part" id="bp-left_leg"  data-part="left_leg">L.LEG</div>
-            <div class="body-part spacer"></div>
-            <div class="body-part" id="bp-right_leg" data-part="right_leg">R.LEG</div>
-        </div>
+        <svg id="body-svg" viewBox="0 0 80 160" xmlns="http://www.w3.org/2000/svg">
+            <!-- Head -->
+            <ellipse id="bp-head" data-part="head" cx="40" cy="14" rx="13" ry="14"/>
+            <!-- Neck connector -->
+            <rect class="body-connector" x="34" y="27" width="12" height="9" rx="3"/>
+            <!-- Torso (trapezoid: wide at shoulders, narrows to hips) -->
+            <path id="bp-torso" data-part="torso"
+                d="M15,36 L65,36 L62,82 L18,82 Z"/>
+            <!-- Left arm (screen-left = player left, mirror view) -->
+            <rect id="bp-left_arm" data-part="left_arm"
+                x="2" y="36" width="12" height="44" rx="5"/>
+            <!-- Right arm -->
+            <rect id="bp-right_arm" data-part="right_arm"
+                x="66" y="36" width="12" height="44" rx="5"/>
+            <!-- Left leg -->
+            <rect id="bp-left_leg" data-part="left_leg"
+                x="19" y="83" width="18" height="62" rx="5"/>
+            <!-- Right leg -->
+            <rect id="bp-right_leg" data-part="right_leg"
+                x="43" y="83" width="18" height="62" rx="5"/>
+        </svg>
     </div>
 
     <!-- Stress bar -->

@@ -143,11 +143,19 @@ function InjuryDefs.IsWorse(new, existing)
     return InjuryDefs.GetRank(new) > InjuryDefs.GetRank(existing)
 end
 
--- Damage amount → severity string
+-- Damage amount → severity string (uses Config.DamageThresholds when available)
 function InjuryDefs.DamageToSeverity(dmg)
-    if dmg < 10  then return 'scratch'
-    elseif dmg < 25 then return 'minor'
-    elseif dmg < 50 then return 'fracture'
+    if Config and Config.DamageThresholds then
+        for _, t in ipairs(Config.DamageThresholds) do
+            if dmg >= t.min and dmg <= t.max then
+                return t.severity
+            end
+        end
+    end
+    -- Fallback if config not loaded
+    if dmg < 15 then return 'scratch'
+    elseif dmg < 35 then return 'minor'
+    elseif dmg < 65 then return 'fracture'
     else                 return 'critical' end
 end
 

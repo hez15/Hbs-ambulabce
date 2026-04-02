@@ -427,19 +427,18 @@ local function UseMassCasualtyAlert()
     lib.showContext('hbs_mass_casualty_confirm')
 end
 
+-- Research menu is opened via the hospital terminal, not a key binding.
+-- Expose globally so cl_ems_terminal.lua can call it.
+function OpenEMSResearchMenu()
+    OpenResearchMenu()
+end
+
 -- ── Key bindings ──────────────────────────────────────────────────────────
 
 CreateThread(function()
     while true do
         Wait(0)
         if not IsPlayerLoaded() or not IsEMS() then Wait(2000); goto continue end
-
-        -- [R] Research menu (when no interaction hint showing and not busy)
-        if IsControlJustPressed(0, 45) then   -- R key
-            if not LocalState.isDowned then
-                OpenResearchMenu()
-            end
-        end
 
         -- [M] Mass casualty alert (Tier 5 — mass_casualty)
         if IsControlJustPressed(0, 244) then   -- M key
@@ -479,7 +478,7 @@ RegisterNetEvent('hbs_ambulance:client:emsTierUp', function(newTier, tierLabel)
     EMSResearch.tier = newTier
     lib.notify({
         title       = '🏅 Tier Up!',
-        description = string.format('You are now a %s. Open your research menu [R] to unlock new abilities!', tierLabel),
+        description = string.format('You are now a %s. Visit a hospital terminal to unlock new abilities!', tierLabel),
         type        = 'success',
         duration    = 10000,
     })

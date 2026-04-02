@@ -18,6 +18,9 @@ local function OnPlayerLoaded()
     LocalState.loaded = true
     Utils.Debug('Player loaded — fetching state from server')
 
+    -- Prevent critical hits (headshots etc.) from instantly killing the player
+    SetPlayerSuffersCriticalHits(PlayerId(), false)
+
     lib.callback('hbs_ambulance:getPlayerState', false, function(data)
         if not data then return end
         LocalState.injuries = data.injuries or {}
