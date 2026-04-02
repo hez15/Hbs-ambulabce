@@ -118,6 +118,12 @@ AddEventHandler('playerDropped', function()
     TriggerEvent('hbs_ambulance:server:broadcastDownedBlips')
 end)
 
+-- ── Callback: EMS online count (used by death screen to show respawn btn) ──
+
+lib.callback.register('hbs_ambulance:getEMSCount', function()
+    return Utils.CountOnlineEMS()
+end)
+
 -- ── Callback: get player state (called on client load) ────────────────────
 
 lib.callback.register('hbs_ambulance:getPlayerState', function(source)

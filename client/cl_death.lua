@@ -3,8 +3,7 @@
 
 local bleedoutActive  = false
 local lastStandActive = false
-local bleedoutSecs    = 0
-local lastHealth      = 200
+local deathTimerThread = nil
 
 -- ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -13,30 +12,72 @@ local function SetDowned(state)
     SB.SetLocal('isDowned', state)
 end
 
-local function ShowDeathScreen(secs)
-    SendNUIMessage({
-        action        = 'showDeathScreen',
-        timeRemaining = secs,
-    })
-    SetNuiFocus(false, false)
-end
-
 local function HideDeathScreen()
     SendNUIMessage({ action = 'hideDeathScreen' })
+    SetNuiFocus(false, false)         -- release cursor/focus back to game
 end
 
--- ── Respawn (triggered from NUI callback or force) ─────────────────────────
+-- Show the death screen and start a unified countdown
+-- totalSecs: total seconds shown on the timer (LastStandTime + BleedoutTime)
+-- canRespawn: whether the respawn button is visible
+local function ShowDeathScreen(totalSecs, canRespawn)
+    SendNUIMessage({
+        action        = 'showDeathScreen',
+        timeRemaining = totalSecs,
+        canRespawn    = canRespawn == true,
+    })
+    SetNuiFocus(true, true)           -- lock cursor into NUI so player can interact
+
+    -- Kill any running timer thread before starting a new one
+    if deathTimerThread then
+        deathTimerThread = nil
+    end
+
+    -- Start unified countdown
+    local remaining = totalSecs
+    deathTimerThread = CreateThread(function()
+        while remaining > 0 and LocalState.isDowned do
+            Wait(1000)
+            remaining = remaining - 1
+            SendNUIMessage({ action = 'updateTimer', timeRemaining = remaining })
+        end
+        -- Timer expired — force respawn prompt
+        if LocalState.isDowned then
+            SendNUIMessage({ action = 'forceRespawn' })
+        end
+        deathTimerThread = nil
+    end)
+end
+
+-- ── Check EMS online count before showing the respawn button ─────────────
+
+local function ShowDeathScreenWithEMSCheck(totalSecs)
+    lib.callback('hbs_ambulance:getEMSCount', false, function(emsCount)
+        local canRespawn = (emsCount or 0) < Config.MinEmsOnline
+        ShowDeathScreen(totalSecs, canRespawn)
+    end)
+end
+
+-- ── Respawn (triggered from NUI button) ────────────────────────────────────
 
 local function DoRespawn(willText)
     if not LocalState.isDowned then return end
     SetDowned(false)
     bleedoutActive  = false
     lastStandActive = false
+    deathTimerThread = nil
     HideDeathScreen()
     SetPlayerSprint(PlayerPedId(), true)
     TriggerServerEvent('hbs_ambulance:server:requestRespawn', willText or '')
 end
 
+-- NUI callback: player clicked "Respawn at Hospital"
+RegisterNuiCallback('respawn', function(data, cb)
+    DoRespawn(data and data.will or '')
+    cb('ok')
+end)
+
+-- Internal event (used by other modules if needed)
 AddEventHandler('hbs_ambulance:client:confirmRespawn', function(willText)
     DoRespawn(willText)
 end)
@@ -53,50 +94,32 @@ local function StartLastStand()
     TaskWrithe(PlayerPedId(), PlayerPedId(), Config.LastStandTime * 1000, 0)
     Notify(Locale('last_stand_msg'), 'warning', 6000)
 
-    ShowDeathScreen(Config.BleedoutTime)
+    -- Show screen — timer counts down the full window (last stand + bleedout)
+    local totalSecs = Config.LastStandTime + Config.BleedoutTime
+    ShowDeathScreenWithEMSCheck(totalSecs)
+
     TriggerServerEvent('hbs_ambulance:server:playerDowned')
 
-    -- After last stand window, start bleedout
+    -- After last stand window, transition to bleedout state
     SetTimeout(Config.LastStandTime * 1000, function()
         if lastStandActive then
             lastStandActive = false
-            TriggerEvent('hbs_ambulance:client:startBleedout')
+            bleedoutActive  = true
+        end
+    end)
+
+    -- Forced death when entire window expires (backup — timer thread also handles this)
+    SetTimeout(totalSecs * 1000, function()
+        if LocalState.isDowned and bleedoutActive then
+            TriggerServerEvent('hbs_ambulance:server:recordDeath', {
+                x    = GetEntityCoords(PlayerPedId()).x,
+                y    = GetEntityCoords(PlayerPedId()).y,
+                z    = GetEntityCoords(PlayerPedId()).z,
+                will = '',
+            })
         end
     end)
 end
-
--- ── Bleedout ───────────────────────────────────────────────────────────────
-
-AddEventHandler('hbs_ambulance:client:startBleedout', function()
-    if bleedoutActive then return end
-    bleedoutActive = true
-    bleedoutSecs   = Config.BleedoutTime
-
-    if not LocalState.isDowned then
-        SetDowned(true)
-        TriggerServerEvent('hbs_ambulance:server:playerDowned')
-    end
-
-    ShowDeathScreen(bleedoutSecs)
-
-    CreateThread(function()
-        while bleedoutActive and bleedoutSecs > 0 do
-            Wait(1000)
-            bleedoutSecs = bleedoutSecs - 1
-            SendNUIMessage({ action = 'updateTimer', timeRemaining = bleedoutSecs })
-        end
-        if bleedoutActive then
-            -- Timer ran out — force respawn screen
-            TriggerServerEvent('hbs_ambulance:server:recordDeath', {
-                x = GetEntityCoords(PlayerPedId()).x,
-                y = GetEntityCoords(PlayerPedId()).y,
-                z = GetEntityCoords(PlayerPedId()).z,
-                will = '',
-            })
-            SendNUIMessage({ action = 'forceRespawn' })
-        end
-    end)
-end)
 
 -- ── Health monitor ─────────────────────────────────────────────────────────
 
@@ -106,13 +129,11 @@ CreateThread(function()
         if not IsPlayerLoaded() then goto continue end
 
         local ped    = PlayerPedId()
-        local health = GetEntityHealth(ped)  -- 0-200 (100 = zero hp in gameplay)
+        local health = GetEntityHealth(ped)   -- 0-200 (100 = zero gameplay hp)
 
         if health <= 100 and not LocalState.isDowned then
             StartLastStand()
         end
-
-        lastHealth = health
         ::continue::
     end
 end)
@@ -122,6 +143,7 @@ end)
 RegisterNetEvent('hbs_ambulance:client:revived', function()
     bleedoutActive  = false
     lastStandActive = false
+    deathTimerThread = nil
     SetDowned(false)
     HideDeathScreen()
     SetPlayerSprint(PlayerPedId(), true)

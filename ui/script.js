@@ -109,12 +109,18 @@ function formatTime(secs) {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function showDeathScreen(timeRemaining) {
+function showDeathScreen(timeRemaining, canRespawn) {
     $('death-screen').classList.remove('hidden');
-    $('timer-value').textContent = formatTime(timeRemaining || 300);
+    $('timer-value').textContent   = formatTime(timeRemaining || 300);
     $('timer-block').style.display = '';
-    $('btn-block').style.display   = '';
     $('force-block').classList.add('hidden');
+    // Only show the respawn button if no EMS is online
+    $('btn-block').style.display   = canRespawn ? '' : 'none';
+    $('death-sub').textContent     = canRespawn
+        ? 'No EMS available — you may respawn at the hospital'
+        : 'Wait for EMS to revive you';
+    // Clear last words field
+    if ($('will-input')) $('will-input').value = '';
 }
 
 function hideDeathScreen() {
@@ -176,7 +182,7 @@ window.addEventListener('message', function (event) {
             break;
 
         case 'showDeathScreen':
-            showDeathScreen(d.timeRemaining);
+            showDeathScreen(d.timeRemaining, d.canRespawn);
             break;
 
         case 'hideDeathScreen':
