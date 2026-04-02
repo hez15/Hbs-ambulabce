@@ -144,14 +144,13 @@ local function UseItem(name)
     end)
 end
 
--- ── Register items with ox_inventory ─────────────────────────────────────
+-- ── Register item use event (ox_inventory calls this when any item is used)
+-- Each item in ox_inventory/data/items.lua must have:
+--   client = { event = 'hbs_ambulance:client:useItem' }
 
-for itemName, _ in pairs(Config.MedicalItems) do
-    local name = itemName   -- capture for closure
-    exports.ox_inventory:RegisterStacks(name, function()
-        UseItem(name)
-    end)
-end
+AddEventHandler('hbs_ambulance:client:useItem', function(data)
+    UseItem(data.item)
+end)
 
 -- ── Blood test result display ─────────────────────────────────────────────
 

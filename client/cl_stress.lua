@@ -48,9 +48,9 @@ local function ApplyStressEffects()
 
     -- Stamina drain
     if effects.staminaDrain then
-        SetPlayerStaminaRechargeMultiplier(PlayerId(), 0.25)
+        SetRunSprintMultiplierForPlayer(PlayerId(), 0.25)
     elseif not adrenalineActive then
-        SetPlayerStaminaRechargeMultiplier(PlayerId(), 1.0)
+        SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
     end
 
     -- Reduced accuracy (aim shake handled by stress-induced weapon sway)
@@ -115,13 +115,13 @@ local function TriggerAdrenaline()
     adrenalineActive = true
     Notify(Locale('adrenaline_start'), 'inform', 4000)
     local ped = PlayerPedId()
-    SetPlayerStaminaRechargeMultiplier(PlayerId(), 4.0)
+    SetRunSprintMultiplierForPlayer(PlayerId(), 4.0)
     SetPedMoveRateOverride(ped, 1.25)
 
     CreateThread(function()
         Wait(Config.AdrenalineDuration * 1000)
         adrenalineActive = false
-        SetPlayerStaminaRechargeMultiplier(PlayerId(), 1.0)
+        SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
         SetPedMoveRateOverride(ped, 1.0)
         Notify(Locale('adrenaline_end'), 'inform', 3000)
     end)

@@ -120,137 +120,126 @@ local function StopCarry()
     Notify(Locale('carry_stop'), 'inform')
 end
 
--- ── ox_target: add / remove options on a downed ped ──────────────────────
+-- ── Helpers ───────────────────────────────────────────────────────────────
 
-local function AddDownedTargets(ped, serverId)
-    exports.ox_target:addEntity(ped, {
-        {
-            label       = 'Revive Patient',
-            icon        = 'fas fa-heartbeat',
-            distance    = 3.0,
-            canInteract = function() return IsEMS() end,
-            onSelect    = function() Revive(serverId, ped) end,
-        },
-        {
-            label       = 'Carry Patient',
-            icon        = 'fas fa-hands-holding',
-            distance    = 3.0,
-            canInteract = function() return IsEMS() and not carryActive end,
-            onSelect    = function() StartCarry(serverId, ped) end,
-        },
-        {
-            label       = 'Treat Wounds',
-            icon        = 'fas fa-band-aid',
-            distance    = 3.0,
-            canInteract = function() return IsEMS() end,
-            onSelect    = function() TreatWounds(serverId) end,
-        },
-        {
-            label       = 'Triage Patient',
-            icon        = 'fas fa-triangle-exclamation',
-            distance    = 3.0,
-            canInteract = function() return IsEMS() end,
-            onSelect    = function()
-                lib.registerContext({
-                    id      = 'hbs_triage_' .. serverId,
-                    title   = 'Triage Patient',
-                    options = {
-                        {
-                            title       = '🔴 Critical',
-                            description = 'Immediately life-threatening',
-                            onSelect    = function()
-                                TriggerServerEvent('hbs_ambulance:server:triagePatient', serverId, 'critical')
-                            end,
-                        },
-                        {
-                            title       = '🟠 Moderate',
-                            description = 'Serious but stable',
-                            onSelect    = function()
-                                TriggerServerEvent('hbs_ambulance:server:triagePatient', serverId, 'moderate')
-                            end,
-                        },
-                        {
-                            title       = '🟡 Minor',
-                            description = 'Walking wounded / low priority',
-                            onSelect    = function()
-                                TriggerServerEvent('hbs_ambulance:server:triagePatient', serverId, 'minor')
-                            end,
-                        },
-                    },
-                })
-                lib.showContext('hbs_triage_' .. serverId)
-            end,
-        },
-        {
-            label       = 'Examine Patient',
-            icon        = 'fas fa-stethoscope',
-            distance    = 3.0,
-            canInteract = function() return IsEMS() and HasUnlock('patient_examine') end,
-            onSelect    = function()
-                if ExaminePatient then ExaminePatient(serverId, ped) end
-            end,
-        },
-        {
-            label       = 'Administer Medication',
-            icon        = 'fas fa-syringe',
-            distance    = 3.0,
-            canInteract = function() return IsEMS() and HasUnlock('administer_meds') end,
-            onSelect    = function()
-                if AdministerMeds then AdministerMeds(serverId) end
-            end,
-        },
-        {
-            label       = 'Full Surgery',
-            icon        = 'fas fa-user-md',
-            distance    = 3.0,
-            canInteract = function() return IsEMS() and HasUnlock('full_surgery') end,
-            onSelect    = function()
-                if FullSurgery then FullSurgery(serverId) end
-            end,
-        },
-    })
-end
-
-local function RemoveDownedTargets(ped)
-    exports.ox_target:removeEntity(ped, {
-        'Revive Patient', 'Carry Patient', 'Treat Wounds', 'Triage Patient',
-        'Examine Patient', 'Administer Medication', 'Full Surgery',
-    })
-end
-
--- ── Track downed state changes via state bags ─────────────────────────────
-
-AddStateBagChangeHandler(SB.Keys.isDowned, nil, function(bagName, _, value)
-    local serverId = tonumber(bagName:match('player:(%d+)'))
-    if not serverId then return end
-    local localId = GetPlayerFromServerId(serverId)
-    if localId < 0 or localId == PlayerId() then return end
-    local ped = GetPlayerPed(localId)
-    if not DoesEntityExist(ped) then return end
-
-    if value then
-        AddDownedTargets(ped, serverId)
-    else
-        RemoveDownedTargets(ped)
-    end
-end)
-
--- Scan already-downed players when EMS loads in
-AddEventHandler('hbs_ambulance:client:stateLoaded', function()
-    if not IsEMS() then return end
-    Wait(500)  -- let state bags settle
+local function PedToServerId(ped)
     for _, pid in ipairs(GetActivePlayers()) do
-        if pid ~= PlayerId() then
-            local srv = GetPlayerServerId(pid)
-            if GetStateBagValue('player:' .. srv, SB.Keys.isDowned) then
-                local ped = GetPlayerPed(pid)
-                if DoesEntityExist(ped) then
-                    AddDownedTargets(ped, srv)
-                end
-            end
+        if GetPlayerPed(pid) == ped then
+            return GetPlayerServerId(pid)
         end
     end
-end)
+    return nil
+end
+
+local function PedIsDowned(ped)
+    local srv = PedToServerId(ped)
+    if not srv then return false end
+    return GetStateBagValue('player:' .. srv, SB.Keys.isDowned) == true
+end
+
+-- ── ox_target: global player targets for EMS ─────────────────────────────
+-- These show on ANY player ped; canInteract gates visibility per option.
+
+exports.ox_target:addGlobalPlayer({
+    {
+        label       = 'Revive Patient',
+        icon        = 'fas fa-heartbeat',
+        distance    = 3.0,
+        canInteract = function(entity) return IsEMS() and PedIsDowned(entity) end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if srv then Revive(srv, data.entity) end
+        end,
+    },
+    {
+        label       = 'Carry Patient',
+        icon        = 'fas fa-hands-holding',
+        distance    = 3.0,
+        canInteract = function(entity) return IsEMS() and PedIsDowned(entity) and not carryActive end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if srv then StartCarry(srv, data.entity) end
+        end,
+    },
+    {
+        label       = 'Treat Wounds',
+        icon        = 'fas fa-band-aid',
+        distance    = 3.0,
+        canInteract = function(entity) return IsEMS() and not PedIsDowned(entity) end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if srv then TreatWounds(srv) end
+        end,
+    },
+    {
+        label       = 'Triage Patient',
+        icon        = 'fas fa-triangle-exclamation',
+        distance    = 3.0,
+        canInteract = function(entity) return IsEMS() and PedIsDowned(entity) end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            lib.registerContext({
+                id      = 'hbs_triage_' .. srv,
+                title   = 'Triage Patient',
+                options = {
+                    {
+                        title       = '🔴 Critical',
+                        description = 'Immediately life-threatening',
+                        onSelect    = function()
+                            TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'critical')
+                        end,
+                    },
+                    {
+                        title       = '🟠 Moderate',
+                        description = 'Serious but stable',
+                        onSelect    = function()
+                            TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'moderate')
+                        end,
+                    },
+                    {
+                        title       = '🟡 Minor',
+                        description = 'Walking wounded / low priority',
+                        onSelect    = function()
+                            TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'minor')
+                        end,
+                    },
+                },
+            })
+            lib.showContext('hbs_triage_' .. srv)
+        end,
+    },
+    {
+        label       = 'Examine Patient',
+        icon        = 'fas fa-stethoscope',
+        distance    = 3.0,
+        canInteract = function() return IsEMS() and HasUnlock('patient_examine') end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if srv and ExaminePatient then ExaminePatient(srv, data.entity) end
+        end,
+    },
+    {
+        label       = 'Administer Medication',
+        icon        = 'fas fa-syringe',
+        distance    = 3.0,
+        canInteract = function() return IsEMS() and HasUnlock('administer_meds') end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if srv and AdministerMeds then AdministerMeds(srv) end
+        end,
+    },
+    {
+        label       = 'Full Surgery',
+        icon        = 'fas fa-user-md',
+        distance    = 3.0,
+        canInteract = function(entity) return IsEMS() and PedIsDowned(entity) and HasUnlock('full_surgery') end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if srv and FullSurgery then FullSurgery(srv) end
+        end,
+    },
+})
 
 -- ── Carry stop — persistent textUI while carrying ─────────────────────────
 

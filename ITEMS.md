@@ -197,7 +197,7 @@ Config.MedicalItems['my_item'] = {
 }
 ```
 
-2. Register the item in ox_inventory (via `items.lua` or your server's item definitions):
+2. Register the item in `ox_inventory/data/items.lua` **with the client event**:
 
 ```lua
 ['my_item'] = {
@@ -206,6 +206,9 @@ Config.MedicalItems['my_item'] = {
     stack  = true,
     close  = true,
     image  = 'my_item.png',
+    client = {
+        event = 'hbs_ambulance:client:useItem'   -- REQUIRED — routes use to our handler
+    },
 }
 ```
 
@@ -215,14 +218,89 @@ Config.MedicalItems['my_item'] = {
 
 ## ox_inventory Registration
 
-Items are registered on resource start in `server/sv_items.lua`:
+Add all items to `ox_inventory/data/items.lua`. **Every item must include `client.event`** — this is what makes items actually usable from the inventory.
 
 ```lua
-exports.ox_inventory:RegisterStacks({
-    ['bandage']       = { label = 'Bandage',       ... },
-    ['firstaidkit']   = { label = 'First Aid Kit', ... },
-    -- etc.
-})
+['bandage'] = {
+    label  = 'Bandage',
+    weight = 50,
+    stack  = true,
+    close  = true,
+    image  = 'bandage.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['firstaidkit'] = {
+    label  = 'First Aid Kit',
+    weight = 500,
+    stack  = true,
+    close  = true,
+    image  = 'firstaidkit.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['bloodbag'] = {
+    label  = 'Blood Bag',
+    weight = 300,
+    stack  = true,
+    close  = true,
+    image  = 'bloodbag.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['defibrillator'] = {
+    label  = 'Defibrillator',
+    weight = 2000,
+    stack  = false,
+    close  = true,
+    image  = 'defibrillator.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['morphine'] = {
+    label  = 'Morphine',
+    weight = 100,
+    stack  = true,
+    close  = true,
+    image  = 'morphine.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['painkiller'] = {
+    label  = 'Painkiller',
+    weight = 50,
+    stack  = true,
+    close  = true,
+    image  = 'painkiller.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['splint'] = {
+    label  = 'Splint',
+    weight = 400,
+    stack  = true,
+    close  = true,
+    image  = 'splint.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['methadone'] = {
+    label  = 'Methadone',
+    weight = 100,
+    stack  = true,
+    close  = true,
+    image  = 'methadone.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+
+['blood_test_kit'] = {
+    label  = 'Blood Test Kit',
+    weight = 200,
+    stack  = true,
+    close  = true,
+    image  = 'blood_test_kit.png',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
 ```
 
-Item images should be placed in `ox_inventory/web/images/` as `<item_name>.png`.
+Item images go in `ox_inventory/web/images/` named exactly as the `image` field above.
