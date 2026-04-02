@@ -1,6 +1,5 @@
 -- Death / bleedout system
--- Ped state (invincibility, writhe animation) is owned by qbx_medical.
--- This file handles: our NUI death screen, state tracking, dispatch, and cleanup.
+-- Manages: last stand, bleedout timer, NUI death screen, respawn
 
 local bleedoutActive  = false
 local lastStandActive = false
@@ -78,17 +77,23 @@ AddEventHandler('hbs_ambulance:client:confirmRespawn', function(willText)
     DoRespawn(willText)
 end)
 
--- ── Last stand entry ────────────────────────────────────────────────────────
--- qbx_medical owns ped state (invincibility, writhe anim).
--- We just show our death screen UI and alert the server.
+-- ── Last Stand ─────────────────────────────────────────────────────────────
 
-local function OnEnterLastStand()
+local function StartLastStand()
     if lastStandActive or bleedoutActive then return end
     lastStandActive = true
     SetDowned(true)
 
-    -- Sprint disabled; qbx_medical applies writhe anim and pins HP
-    SetPlayerSprint(PlayerPedId(), false)
+    local ped = PlayerPedId()
+
+    -- Keep ped alive in GTA's eyes — prevents native death screen
+    SetEntityInvincible(ped, true)
+    if GetEntityHealth(ped) <= 100 then
+        SetEntityHealth(ped, 101)
+    end
+
+    SetPlayerSprint(ped, false)
+    TaskWrithe(ped, ped, Config.LastStandTime * 1000, 0)
     Notify(Locale('last_stand_msg'), 'warning', 6000)
 
     local totalSecs = Config.LastStandTime + Config.BleedoutTime
@@ -113,25 +118,24 @@ local function OnEnterLastStand()
     end)
 end
 
--- ── qbx_medical detection loop ─────────────────────────────────────────────
--- Poll qbx_medical exports instead of raw health, so we don't fight with
--- qbx_medical's own ped-state management.
+-- ── Health monitor ─────────────────────────────────────────────────────────
 
 CreateThread(function()
     while true do
         Wait(300)
         if not IsPlayerLoaded() then goto continue end
 
-        local inLaststand = exports.qbx_medical:IsLaststand()
-        if inLaststand and not LocalState.isDowned then
-            OnEnterLastStand()
-        end
+        local ped    = PlayerPedId()
+        local health = GetEntityHealth(ped)
 
+        if health <= 100 and not LocalState.isDowned then
+            StartLastStand()
+        end
         ::continue::
     end
 end)
 
--- ── Revive cleanup (shared logic) ─────────────────────────────────────────
+-- ── Shared revive cleanup ──────────────────────────────────────────────────
 
 local function OnRevived()
     bleedoutActive  = false
@@ -141,7 +145,6 @@ local function OnRevived()
     HideDeathScreen()
 
     local ped = PlayerPedId()
-    -- qbx_medical re-enables damage on its side; we mirror here for safety
     SetEntityInvincible(ped, false)
     ClearPedTasksImmediately(ped)
     SetPlayerSprint(ped, true)
@@ -151,15 +154,8 @@ local function OnRevived()
     Notify(Locale('revive_success'), 'success')
 end
 
--- Our own EMS revive event (from hbs_ambulance:server:performRevive)
+-- EMS revive (from hbs_ambulance:server:performRevive)
 RegisterNetEvent('hbs_ambulance:client:revived', OnRevived)
-
--- qbx_medical / qbx_ambulancejob revive event — hook so our UI always clears
-RegisterNetEvent('qbx_medical:client:playerRevived', function()
-    if LocalState.isDowned then
-        OnRevived()
-    end
-end)
 
 -- ── Teleport to hospital on respawn ────────────────────────────────────────
 

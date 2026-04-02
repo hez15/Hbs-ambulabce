@@ -53,8 +53,6 @@ files {
 
 dependencies {
     'qbx_core',
-    'qbx_medical',
-    'qbx_ambulancejob',
     'ox_lib',
     'ox_target',
     'ox_inventory',

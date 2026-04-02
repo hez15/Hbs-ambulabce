@@ -1,30 +1,9 @@
 -- Death: downed state, bleedout tracking, respawn, NPC heal, blip broadcast
 
 -- ── Player downed ─────────────────────────────────────────────────────────
--- Triggered by our own client OR by qbx_medical when player enters last stand.
 
--- qbx_medical fires this when a player enters last stand.
--- We hook it so qbx_medical-managed deaths still populate DownedPlayers
--- and send dispatch alerts without the client having to duplicate logic.
-RegisterNetEvent('qbx_medical:server:onPlayerLaststand', function()
+RegisterNetEvent('hbs_ambulance:server:playerDowned', function()
     local src = source
-    if DownedPlayers[src] then return end  -- already tracked (our event fired first)
-    TriggerEvent('hbs_ambulance:server:playerDowned', src)
-end)
-
--- qbx_medical fires this when a player respawns through qbx_ambulancejob's
--- hospital check-in. We hook it to clear our tracking state.
-RegisterNetEvent('qbx_medical:server:playerRespawned', function()
-    local src = source
-    if not DownedPlayers[src] then return end
-    DownedPlayers[src] = nil
-    SB.Set(src, 'isDowned', false)
-    TriggerEvent('hbs_ambulance:server:broadcastDownedBlips')
-end)
-
-RegisterNetEvent('hbs_ambulance:server:playerDowned', function(overrideSrc)
-    -- When called via TriggerEvent internally, overrideSrc carries the real src
-    local src = overrideSrc or source
     local cid    = Utils.GetCitizenId(src)
     if not cid then return end
 
