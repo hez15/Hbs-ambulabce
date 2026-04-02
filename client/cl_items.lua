@@ -147,9 +147,13 @@ end
 -- ── Register item use event (ox_inventory calls this when any item is used)
 -- Each item in ox_inventory/data/items.lua must have:
 --   client = { event = 'hbs_ambulance:client:useItem' }
+--
+-- ox_inventory passes either the full item object ({ name = 'bandage', ... })
+-- or just the item name string depending on version.
 
 AddEventHandler('hbs_ambulance:client:useItem', function(data)
-    UseItem(data.item)
+    local name = type(data) == 'string' and data or (data.name or data.item)
+    UseItem(name)
 end)
 
 -- ── Blood test result display ─────────────────────────────────────────────
