@@ -9,7 +9,16 @@ local function SpawnNPC(hospital)
     local npc   = hospital.npc
     local model = GetHashKey(npc.model)
     RequestModel(model)
-    while not HasModelLoaded(model) do Wait(10) end
+    local timeout = 0
+    while not HasModelLoaded(model) do
+        Wait(50)
+        timeout = timeout + 1
+        if timeout >= 100 then   -- 5 second limit
+            Utils.Debug('SpawnNPC: model load timeout for', npc.model)
+            SetModelAsNoLongerNeeded(model)
+            return nil
+        end
+    end
 
     local ped = CreatePed(4, model,
         npc.coords.x, npc.coords.y, npc.coords.z, npc.coords.w,

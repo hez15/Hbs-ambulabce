@@ -54,13 +54,13 @@ RegisterNetEvent('hbs_ambulance:server:requestRespawn', function(willText)
     DB.ClearInjuries(cid)
     SB.Set(src, 'injuries', {})
 
-    -- Teleport to nearest hospital
+    -- Teleport to nearest hospital spawn point
     local coords   = GetEntityCoords(GetPlayerPed(src))
     local hospital = Utils.GetNearestHospital(coords)
     if hospital then
+        local sp = hospital.spawnCoord
         TriggerClientEvent('hbs_ambulance:client:respawnAt', src, {
-            x = hospital.coords.x, y = hospital.coords.y,
-            z = hospital.coords.z, w = hospital.coords.w,
+            x = sp.x, y = sp.y, z = sp.z, w = sp.w,
         })
     end
 
@@ -87,9 +87,9 @@ AddEventHandler('hbs_ambulance:server:npcHeal', function(src)
     local coords   = GetEntityCoords(GetPlayerPed(src))
     local hospital = Utils.GetNearestHospital(coords)
     if hospital then
+        local sp = hospital.spawnCoord
         TriggerClientEvent('hbs_ambulance:client:respawnAt', src, {
-            x = hospital.coords.x, y = hospital.coords.y,
-            z = hospital.coords.z, w = hospital.coords.w,
+            x = sp.x, y = sp.y, z = sp.z, w = sp.w,
         })
     end
 
@@ -101,7 +101,13 @@ end)
 AddEventHandler('hbs_ambulance:server:broadcastDownedBlips', function()
     local list = {}
     for srv, data in pairs(DownedPlayers) do
-        table.insert(list, { src = srv, x = data.x, y = data.y, z = data.z })
+        table.insert(list, {
+            src    = srv,
+            x      = data.x,
+            y      = data.y,
+            z      = data.z,
+            triage = SB.Get(srv, 'triage'),
+        })
     end
     TriggerClientEvent('hbs_ambulance:client:updateDownedBlips', -1, list)
 end)

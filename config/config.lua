@@ -9,6 +9,17 @@ Config.MinEmsOnline = 1              -- Minimum EMS online before NPC doctors ac
 Config.UseTarget = true              -- Use ox_target for interactions
 Config.InteractKey = 38             -- E key
 
+-- Revive item requirement
+Config.ReviveRequiresItem  = false           -- set true to require defibrillator item
+Config.ReviveItem          = 'defibrillator'
+
+-- Misc gameplay
+Config.AmbulanceLockOnLoad = true            -- lock ambulance doors when patient is loaded
+Config.AdrenalineDuration  = 20             -- seconds of adrenaline boost after revive
+Config.FractureSpeedMult   = 0.75           -- movement speed with a fractured limb
+Config.NPCHealEnabled      = true            -- NPC auto-heals when no EMS online
+Config.DispatchCooldown    = 30             -- min seconds between dispatch alerts per player
+
 --[[
     DEATH / BLEEDOUT
 ]]
@@ -54,14 +65,14 @@ Config.DamageThresholds = {
     { min = 61, max = 999,severity = 'critical' },
 }
 
--- Effects per body part + severity
+-- Effects per body part + severity (keys must match InjuryDefs.BoneMap snake_case output)
 Config.InjuryEffects = {
-    leftLeg  = { limp = true,       speedMult = 0.6 },
-    rightLeg = { limp = true,       speedMult = 0.6 },
-    leftArm  = { weaponSway = true, reloadSlow = true },
-    rightArm = { weaponSway = true, reloadSlow = true },
-    torso    = { breathingImpaired = true, speedMult = 0.8 },
-    head     = { blurredVision = true, controlsReduced = true },
+    left_leg  = { limp = true, speedMult = 0.6 },
+    right_leg = { limp = true, speedMult = 0.6 },
+    left_arm  = { weaponSway = true, reloadSlow = true },
+    right_arm = { weaponSway = true, reloadSlow = true },
+    torso     = { breathingImpaired = true, speedMult = 0.8 },
+    head      = { blurredVision = true, controlsReduced = true },
 }
 
 --[[
@@ -190,6 +201,13 @@ Config.MedicalItems = {
         animation  = { dict = 'mini@crate_search@std@ps', anim = 'crate_search_ps_std', flag = 49 },
         notification = 'You applied a splint.',
     },
+    blood_test_kit = {
+        label       = 'Blood Test Kit',
+        useTime     = 8,
+        requiresEms = true,
+        animation   = { dict = 'mini@crate_search@std@ps', anim = 'crate_search_ps_std', flag = 49 },
+        notification= 'Blood test complete.',
+    },
     methadone = {
         label            = 'Methadone',
         useTime          = 5,
@@ -273,6 +291,15 @@ Config.HospitalBlip = {
 }
 
 --[[
+    TRIAGE
+]]
+Config.TriageColours = {
+    critical = 1,    -- red
+    moderate = 17,   -- orange
+    minor    = 5,    -- yellow
+}
+
+--[[
     EMS RESEARCH / TIER PROGRESSION
 ]]
 Config.EMSResearch = {
@@ -293,6 +320,7 @@ Config.EMSResearch = {
         dutyPassive     = 10,   -- every 5 minutes on duty
         firstResponder  = 25,   -- respond to dispatch within window
         addictionTreat  = 40,   -- reduce a patient's addiction level via methadone
+        bloodTest       = 20,   -- perform a blood test on a patient
     },
 
     dutyPassiveInterval   = 300,   -- seconds between passive XP ticks

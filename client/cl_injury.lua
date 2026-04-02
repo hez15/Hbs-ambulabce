@@ -18,10 +18,10 @@ local function ApplyInjuryEffects()
     for part, severity in pairs(injuries) do
         local fx = Config.InjuryEffects[part]
         if fx then
-            if fx.limp     then hasLimp    = true end
-            if fx.slowMovement then hasSlow = true end
-            if fx.weaponHandling then hasSway = true end
-            if fx.blurredVision  then hasBlur = true end
+            if fx.limp                          then hasLimp = true end
+            if fx.speedMult and fx.speedMult < 1.0 then hasSlow = true end
+            if fx.weaponSway                    then hasSway = true end
+            if fx.blurredVision                 then hasBlur = true end
         end
         if severity == 'critical' then
             hasBloodloss = true
@@ -30,8 +30,14 @@ local function ApplyInjuryEffects()
 
     -- Limp / slow movement
     if hasLimp or hasSlow then
-        local mult = hasLimp and Config.FractureSpeedMult or
-                     (Config.InjuryEffects.torso and Config.InjuryEffects.torso.slowMovement or 0.8)
+        local mult = Config.FractureSpeedMult or 0.75
+        -- Use the lowest speedMult found across all injured parts
+        for part2, _ in pairs(injuries) do
+            local fx2 = Config.InjuryEffects[part2]
+            if fx2 and fx2.speedMult and fx2.speedMult < mult then
+                mult = fx2.speedMult
+            end
+        end
         SetPedMoveRateOverride(ped, mult)
         RequestAnimSet('move_m@injured')
         while not HasAnimSetLoaded('move_m@injured') do Wait(10) end

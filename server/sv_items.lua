@@ -90,3 +90,38 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName, data)
         TriggerEvent('hbs_ambulance:server:reduceAddiction', src, cid, cfg.reduceAmount)
     end
 end)
+
+-- ── Blood test ────────────────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:bloodTest', function(targetSrc)
+    local src = source
+    if not Utils.IsEMS(src) then return end
+
+    -- Consume item
+    exports.ox_inventory:RemoveItem(src, 'blood_test_kit', 1)
+
+    local targetCid = Utils.GetCitizenId(targetSrc)
+    if not targetCid then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, {
+            msg = 'Could not identify patient.', type = 'error'
+        })
+        return
+    end
+
+    local addictions = DB.LoadAddiction(targetCid)
+
+    -- Get patient display name
+    local Player = exports.qbx_core:GetPlayer(targetSrc)
+    local targetName = Player and Player.PlayerData.charinfo and
+        (Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname)
+        or 'Unknown'
+
+    -- Send results to EMS
+    TriggerClientEvent('hbs_ambulance:client:bloodTestResult', src, targetName, addictions)
+
+    -- Award XP
+    TriggerEvent('hbs_ambulance:server:awardEMSXP', src,
+        Config.EMSResearch.xpRewards.bloodTest or 20)
+
+    Utils.Debug('Blood test by EMS', src, 'on', targetSrc, targetCid)
+end)

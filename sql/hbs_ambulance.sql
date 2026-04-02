@@ -2,10 +2,10 @@
 -- Run this SQL on your database before starting the resource
 
 CREATE TABLE IF NOT EXISTS `hbs_injuries` (
-    `id` INT(11) NOT NULL AUTO_INCREMENT,
-    `citizenid` VARCHAR(50) NOT NULL,
-    `body_part` VARCHAR(30) NOT NULL,
-    `injury_type` ENUM('scratch','minor','fracture','critical') NOT NULL DEFAULT 'scratch',
+    `id`         INT(11)      NOT NULL AUTO_INCREMENT,
+    `citizenid`  VARCHAR(50)  NOT NULL,
+    `body_part`  VARCHAR(30)  NOT NULL,
+    `severity`   VARCHAR(20)  NOT NULL DEFAULT 'scratch',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `citizenid` (`citizenid`)

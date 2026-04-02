@@ -79,8 +79,20 @@ RegisterNetEvent('hbs_ambulance:server:loadPatient', function(targetSrc, plate)
 end)
 
 RegisterNetEvent('hbs_ambulance:server:unloadPatient', function(targetSrc)
+    local src = source
     SB.Set(targetSrc, 'isCarried', false)
-    TriggerClientEvent('hbs_ambulance:client:patientUnloaded', source)
+    TriggerClientEvent('hbs_ambulance:client:patientUnloaded', targetSrc)  -- notify the patient
     -- Award transport XP to the unloading EMS
-    TriggerEvent('hbs_ambulance:server:awardEMSXP', source, Config.EMSResearch.xpRewards.transport)
+    TriggerEvent('hbs_ambulance:server:awardEMSXP', src, Config.EMSResearch.xpRewards.transport)
+end)
+
+-- ── Triage ────────────────────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:triagePatient', function(targetSrc, level)
+    local src = source
+    if not Utils.IsEMS(src) then return end
+    if not Config.TriageColours[level] then return end   -- validate level string
+    SB.Set(targetSrc, 'triage', level)
+    TriggerEvent('hbs_ambulance:server:broadcastDownedBlips')
+    Utils.Debug('EMS', src, 'triaged', targetSrc, 'as', level)
 end)

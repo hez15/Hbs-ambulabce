@@ -418,6 +418,7 @@ AddEventHandler('hbs_ambulance:server:performRevive', function(reviverSrc, targe
 
     DownedPlayers[targetSrc] = nil
     SB.Set(targetSrc, 'isDowned', false)
+    SB.Set(targetSrc, 'triage',   nil)
     DB.ClearInjuries(targetCid)
     SB.Set(targetSrc, 'injuries', {})
 

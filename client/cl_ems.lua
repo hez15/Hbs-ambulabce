@@ -146,6 +146,42 @@ local function AddDownedTargets(ped, serverId)
             onSelect    = function() TreatWounds(serverId) end,
         },
         {
+            label       = 'Triage Patient',
+            icon        = 'fas fa-triangle-exclamation',
+            distance    = 3.0,
+            canInteract = function() return IsEMS() end,
+            onSelect    = function()
+                lib.registerContext({
+                    id      = 'hbs_triage_' .. serverId,
+                    title   = 'Triage Patient',
+                    options = {
+                        {
+                            title       = '🔴 Critical',
+                            description = 'Immediately life-threatening',
+                            onSelect    = function()
+                                TriggerServerEvent('hbs_ambulance:server:triagePatient', serverId, 'critical')
+                            end,
+                        },
+                        {
+                            title       = '🟠 Moderate',
+                            description = 'Serious but stable',
+                            onSelect    = function()
+                                TriggerServerEvent('hbs_ambulance:server:triagePatient', serverId, 'moderate')
+                            end,
+                        },
+                        {
+                            title       = '🟡 Minor',
+                            description = 'Walking wounded / low priority',
+                            onSelect    = function()
+                                TriggerServerEvent('hbs_ambulance:server:triagePatient', serverId, 'minor')
+                            end,
+                        },
+                    },
+                })
+                lib.showContext('hbs_triage_' .. serverId)
+            end,
+        },
+        {
             label       = 'Examine Patient',
             icon        = 'fas fa-stethoscope',
             distance    = 3.0,
@@ -177,7 +213,7 @@ end
 
 local function RemoveDownedTargets(ped)
     exports.ox_target:removeEntity(ped, {
-        'Revive Patient', 'Carry Patient', 'Treat Wounds',
+        'Revive Patient', 'Carry Patient', 'Treat Wounds', 'Triage Patient',
         'Examine Patient', 'Administer Medication', 'Full Surgery',
     })
 end
@@ -242,14 +278,20 @@ local function UpdateDownedBlips(list)
     if not IsEMS() then return end
 
     for _, entry in ipairs(list) do
-        local blip = AddBlipForCoord(entry.x, entry.y, entry.z)
+        local blip   = AddBlipForCoord(entry.x, entry.y, entry.z)
+        local colour = (entry.triage and Config.TriageColours[entry.triage])
+                       or Config.DownedBlipColor
+
         SetBlipSprite(blip, Config.DownedBlipSprite)
-        SetBlipColour(blip, Config.DownedBlipColor)
+        SetBlipColour(blip, colour)
         SetBlipScale(blip, 0.85)
         SetBlipAsShortRange(blip, false)
+
+        local triageLabel = entry.triage and (' [' .. entry.triage:sub(1,1):upper() .. entry.triage:sub(2) .. ']') or ''
         BeginTextCommandSetBlipName('STRING')
-        AddTextComponentSubstringPlayerName('Downed Player')
+        AddTextComponentSubstringPlayerName('Downed Player' .. triageLabel)
         EndTextCommandSetBlipName(blip)
+
         downedBlips[entry.src] = blip
     end
 end

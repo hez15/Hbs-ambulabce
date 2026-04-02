@@ -83,8 +83,9 @@ end
 function Utils.GetNearestHospital(coords)
     local nearest, dist = nil, math.huge
     for _, hospital in ipairs(Config.Hospitals) do
-        local d = #(vector3(coords.x, coords.y, coords.z) -
-                    vector3(hospital.coords.x, hospital.coords.y, hospital.coords.z))
+        local hc = hospital.blipCoords
+        local d  = #(vector3(coords.x, coords.y, coords.z) -
+                     vector3(hc.x, hc.y, hc.z))
         if d < dist then dist = d; nearest = hospital end
     end
     return nearest
@@ -165,6 +166,7 @@ SB.Keys = {
     inPain     = 'hbs:inPain',
     bloodloss  = 'hbs:bloodloss',
     addiction  = 'hbs:addiction',
+    triage     = 'hbs:triage',
     -- EMS research progression
     emsTier    = 'hbs:emsTier',
     emsXP      = 'hbs:emsXP',
