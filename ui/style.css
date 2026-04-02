@@ -1,0 +1,306 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: transparent;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* ── Medical HUD ─────────────────────────────────────────── */
+
+#medical-hud {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 140px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 10px 8px;
+    backdrop-filter: blur(4px);
+    user-select: none;
+}
+
+/* Body SVG diagram */
+#body-diagram {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+#body-svg {
+    width: 60px;
+    height: 120px;
+}
+
+/* Default body part color */
+#body-svg circle,
+#body-svg rect:not(.body-connector),
+#body-svg path {
+    fill: rgba(255, 255, 255, 0.18);
+    stroke: rgba(255, 255, 255, 0.35);
+    stroke-width: 1.5;
+    transition: fill 0.4s ease, stroke 0.4s ease, filter 0.4s ease;
+}
+
+.body-connector {
+    fill: rgba(255, 255, 255, 0.12) !important;
+    stroke: none !important;
+}
+
+/* Severity states */
+.sev-scratch {
+    fill: rgba(255, 220, 50, 0.75) !important;
+    stroke: rgba(255, 220, 50, 0.9) !important;
+}
+
+.sev-minor {
+    fill: rgba(255, 140, 30, 0.80) !important;
+    stroke: rgba(255, 140, 30, 1) !important;
+}
+
+.sev-fracture {
+    fill: rgba(80, 160, 255, 0.80) !important;
+    stroke: rgba(80, 160, 255, 1) !important;
+    filter: drop-shadow(0 0 4px rgba(80, 160, 255, 0.7));
+}
+
+.sev-critical {
+    fill: rgba(220, 40, 40, 0.90) !important;
+    stroke: rgba(255, 60, 60, 1) !important;
+    filter: drop-shadow(0 0 6px rgba(220, 40, 40, 0.9));
+    animation: criticalPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes criticalPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+}
+
+/* Bars */
+.hud-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.hud-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.5px;
+    width: 38px;
+    flex-shrink: 0;
+}
+
+.bar-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+.stress-fill {
+    background: linear-gradient(90deg, #f0a500, #e03030);
+}
+
+.addiction-fill {
+    background: linear-gradient(90deg, #a040ff, #ff40a0);
+}
+
+.hud-val {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.65);
+    width: 18px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* Status icons */
+#status-icons {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    justify-content: center;
+}
+
+.icon {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* ── Utility ─────────────────────────────────────────────── */
+
+.hidden {
+    display: none !important;
+}
+
+/* ── Death Screen ─────────────────────────────────────────── */
+
+#death-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(3px);
+    z-index: 9999;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+#death-box {
+    background: rgba(10, 10, 15, 0.92);
+    border: 1px solid rgba(200, 30, 30, 0.5);
+    border-radius: 12px;
+    padding: 32px 36px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(200, 30, 30, 0.25), 0 8px 32px rgba(0,0,0,0.6);
+    animation: slideUp 0.35s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+#death-title {
+    font-size: 28px;
+    font-weight: 900;
+    color: #cc2222;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(200, 30, 30, 0.7);
+    margin-bottom: 6px;
+}
+
+#death-sub {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 20px;
+    letter-spacing: 0.5px;
+}
+
+#timer-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+#timer-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#timer-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e05050;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 12px rgba(220, 60, 60, 0.6);
+}
+
+#will-block {
+    margin-bottom: 18px;
+}
+
+#will-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 12px;
+    font-family: inherit;
+    padding: 8px 10px;
+    resize: none;
+    height: 64px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#will-input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+    font-style: italic;
+}
+
+#will-input:focus {
+    border-color: rgba(255, 255, 255, 0.28);
+}
+
+#btn-block {
+    margin-bottom: 0;
+}
+
+.death-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    padding: 9px 22px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.death-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-1px);
+}
+
+.death-btn:active {
+    transform: translateY(0);
+}
+
+.death-btn.danger {
+    border-color: rgba(200, 40, 40, 0.6);
+    color: #e06060;
+}
+
+.death-btn.danger:hover {
+    background: rgba(200, 40, 40, 0.18);
+    border-color: rgba(200, 40, 40, 0.9);
+    color: #ff8080;
+}
+
+#force-block {
+    margin-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 14px;
+}
+
+#force-block p {
+    font-size: 12px;
+    color: rgba(255, 100, 100, 0.8);
+    margin-bottom: 10px;
+}

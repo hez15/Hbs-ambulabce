@@ -1,89 +1,129 @@
-local config = require 'config.client'
+-- HBS Death screen + downed state handler
+-- Ped physics/animation managed by qbx_medical.
+-- This file: NUI death screen, server tracking, revive cleanup.
+
+local config      = require 'config.client'
 local sharedConfig = require 'config.shared'
+local isShowing   = false
 local doctorCount = 0
 
-local function getDoctorCount()
-    return lib.callback.await('qbx_ambulancejob:server:getNumDoctors')
-end
+-- ── NUI helpers ───────────────────────────────────────────────────────────
 
-local function displayRespawnText()
-    local deathTime = exports.qbx_medical:GetDeathTime()
-    if deathTime > 0 and doctorCount > 0 then
-        qbx.drawText2d({ text = locale('info.respawn_txt', math.ceil(deathTime)), coords = vec2(1.0, 1.44), scale = 0.6 })
-    else
-        qbx.drawText2d({
-            text = locale('info.respawn_revive', exports.qbx_medical:GetRespawnHoldTimeDeprecated(), sharedConfig.checkInCost),
-            coords = vec2(1.0, 1.44),
-            scale = 0.6
-        })
-    end
-end
+local function ShowDeathScreen(canRespawn, timeRemaining)
+    if isShowing then return end
+    isShowing = true
+    HBSState.isDowned = true
+    HBS.SetLocal('isDowned', true)
 
----@param ped number
-local function playDeadAnimation(ped)
-    if IsInHospitalBed then
-        if not IsEntityPlayingAnim(ped, InBedDict, InBedAnim, 3) then
-            lib.playAnim(ped, InBedDict, InBedAnim, 1.0, 1.0, -1, 1, 0, false, false, false)
+    SendNUIMessage({
+        action        = 'showDeathScreen',
+        timeRemaining = timeRemaining or 300,
+        canRespawn    = canRespawn == true,
+    })
+    SetNuiFocus(true, true)
+
+    -- Mirror countdown in NUI
+    CreateThread(function()
+        local t = timeRemaining or 300
+        while t > 0 and HBSState.isDowned do
+            Wait(1000)
+            t = t - 1
+            SendNUIMessage({ action = 'updateTimer', timeRemaining = t })
         end
-    else
-        exports.qbx_medical:PlayDeadAnimation()
-    end
-end
-
----@param ped number
-local function handleDead(ped)
-    if not IsInHospitalBed then
-        displayRespawnText()
-    end
-
-    playDeadAnimation(ped)
-end
-
----Player is able to send a notification to EMS there are any on duty
-local function handleRequestingEms()
-    if not EmsNotified then
-        qbx.drawText2d({ text = locale('info.request_help'), coords = vec2(1.0, 1.40), scale = 0.6 })
-        if IsControlJustPressed(0, 47) then
-            TriggerServerEvent('hospital:server:ambulanceAlert', locale('info.civ_down'))
-            EmsNotified = true
+        if HBSState.isDowned then
+            SendNUIMessage({ action = 'forceRespawn' })
         end
-    else
-        qbx.drawText2d({ text = locale('info.help_requested'), coords = vec2(1.0, 1.40), scale = 0.6 })
-    end
+    end)
 end
 
-local function handleLastStand()
-    local laststandTime = exports.qbx_medical:GetLaststandTime()
-    if laststandTime > config.laststandTimer or doctorCount == 0 then
-        qbx.drawText2d({ text = locale('info.bleed_out', math.ceil(laststandTime)), coords = vec2(1.0, 1.44), scale = 0.6 })
-    else
-        qbx.drawText2d({ text = locale('info.bleed_out_help', math.ceil(laststandTime)), coords = vec2(1.0, 1.44), scale = 0.6 })
-        handleRequestingEms()
-    end
+local function HideDeathScreen()
+    if not isShowing then return end
+    isShowing = false
+    HBSState.isDowned = false
+    HBS.SetLocal('isDowned', false)
+    SendNUIMessage({ action = 'hideDeathScreen' })
+    SetNuiFocus(false, false)
 end
 
----Set dead and last stand states.
+-- ── qbx_medical poll loop — show NUI when in laststand or dead ───────────
+
 CreateThread(function()
-    local lastUpdate = GetGameTimer()
+    local lastDoctorCheck = 0
     while true do
-        local isDead = exports.qbx_medical:IsDead()
+        local isDead      = exports.qbx_medical:IsDead()
         local inLaststand = exports.qbx_medical:IsLaststand()
+
         if isDead or inLaststand then
-            if isDead then
-                handleDead(cache.ped)
-            elseif inLaststand then
-                handleLastStand()
+            -- Keep ped animation running (qbx_medical handles invincibility/writhe)
+            if isDead and not IsInHospitalBed then
+                exports.qbx_medical:PlayDeadAnimation()
             end
 
-            local currentTime = GetGameTimer()
-            if (currentTime - lastUpdate) > 60000 then
-                doctorCount = getDoctorCount()
-                lastUpdate = currentTime
+            if not isShowing then
+                -- Refresh doctor count periodically
+                local now = GetGameTimer()
+                if (now - lastDoctorCheck) > 60000 then
+                    doctorCount = lib.callback.await('qbx_ambulancejob:server:getNumDoctors')
+                    lastDoctorCheck = now
+                end
+
+                local timeLeft = inLaststand
+                    and math.ceil(exports.qbx_medical:GetLaststandTime())
+                    or  300
+
+                ShowDeathScreen(doctorCount < HBSConfig.MinEmsOnline, timeLeft)
+                TriggerServerEvent('hbs_ambulance:server:playerDowned')
             end
 
             Wait(0)
         else
+            if isShowing then HideDeathScreen() end
             Wait(1000)
         end
     end
+end)
+
+-- ── Revive hooks ──────────────────────────────────────────────────────────
+
+-- qbx_medical revive (hospital check-in / standard revive)
+RegisterNetEvent('qbx_medical:client:playerRevived', function()
+    HideDeathScreen()
+    TriggerEvent('hbs:client:clearInjuries')
+    TriggerEvent('hbs:client:setStress', 0)
+    EmsNotified = false
+end)
+
+-- Our EMS research revive path
+RegisterNetEvent('hbs_ambulance:client:revived', function()
+    HideDeathScreen()
+    SetEntityHealth(cache.ped, 200)
+    SetEntityInvincible(cache.ped, false)
+    ClearPedTasksImmediately(cache.ped)
+    TriggerEvent('hbs:client:clearInjuries')
+    TriggerEvent('hbs:client:setStress', 0)
+    exports.qbx_core:Notify('You have been revived!', 'success')
+end)
+
+-- ── NUI respawn button ────────────────────────────────────────────────────
+
+RegisterNuiCallback('respawn', function(data, cb)
+    HideDeathScreen()
+    TriggerServerEvent('hbs_ambulance:server:requestRespawn')
+    cb('ok')
+end)
+
+-- ── Teleport to hospital after server respawn ─────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:client:respawnAt', function(coords)
+    DoScreenFadeOut(500)
+    Wait(600)
+    local ped = cache.ped
+    SetEntityInvincible(ped, false)
+    ClearPedTasksImmediately(ped)
+    SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, true)
+    SetEntityHeading(ped, coords.w or 0.0)
+    SetEntityHealth(ped, 200)
+    TriggerEvent('hbs:client:clearInjuries')
+    TriggerEvent('hbs:client:setStress', 0)
+    DoScreenFadeIn(1000)
 end)

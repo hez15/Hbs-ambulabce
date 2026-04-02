@@ -1,0 +1,30 @@
+-- HBS Ambulance — database schema
+-- Run once; safe to re-run (uses IF NOT EXISTS / IF NOT EXISTS column checks)
+
+CREATE TABLE IF NOT EXISTS `hbs_injuries` (
+    `citizenid`  VARCHAR(50)  NOT NULL,
+    `part`       VARCHAR(20)  NOT NULL,
+    `severity`   VARCHAR(20)  NOT NULL,
+    PRIMARY KEY (`citizenid`, `part`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `hbs_stress` (
+    `citizenid`  VARCHAR(50)  NOT NULL,
+    `stress`     INT          NOT NULL DEFAULT 0,
+    PRIMARY KEY (`citizenid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `hbs_addiction` (
+    `citizenid`  VARCHAR(50)  NOT NULL,
+    `substance`  VARCHAR(50)  NOT NULL,
+    `level`      INT          NOT NULL DEFAULT 0,
+    PRIMARY KEY (`citizenid`, `substance`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `hbs_ems_research` (
+    `citizenid`  VARCHAR(50)  NOT NULL,
+    `tier`       INT          NOT NULL DEFAULT 0,
+    `xp`         INT          NOT NULL DEFAULT 0,
+    `unlocks`    LONGTEXT     DEFAULT NULL,
+    PRIMARY KEY (`citizenid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
