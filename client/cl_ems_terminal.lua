@@ -1,6 +1,6 @@
--- EMS Research Terminal — spawns a computer prop at each hospital and opens the research menu
+-- EMS Research Terminal — spawns a computer prop at each hospital, ox_target opens research menu
 
-local terminalProps = {}   -- { propHandle, ... }
+local terminalProps = {}
 
 -- ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -33,30 +33,22 @@ local function SpawnTerminalProp(coord)
     return prop
 end
 
--- ── Create interaction zone for one terminal ──────────────────────────────
+-- ── Attach ox_target to terminal prop ────────────────────────────────────
 
-local function CreateTerminalZone(hospitalName, coord)
-    lib.zones.sphere({
-        coords  = vector3(coord.x, coord.y, coord.z),
-        radius  = Config.EMSResearch.terminalRadius,
-        debug   = Config.Debug,
-        onEnter = function()
-            if not IsEMS() then return end
-            lib.showTextUI('[E] EMS Research Terminal — ' .. hospitalName, { position = 'top-center' })
-        end,
-        onExit  = function()
-            lib.hideTextUI()
-        end,
-        inside  = function()
-            if not IsEMS() then return end
-            if IsControlJustPressed(0, 38) then   -- E key
-                lib.hideTextUI()
-                -- OpenResearchMenu is defined in cl_ems_research.lua (loaded before this file)
+local function AttachTerminalTarget(prop, hospitalName)
+    exports.ox_target:addLocalEntity(prop, {
+        {
+            label       = 'EMS Research Terminal',
+            icon        = 'fas fa-microscope',
+            distance    = Config.EMSResearch.terminalRadius,
+            canInteract = function() return IsEMS() end,
+            onSelect    = function()
+                -- OpenResearchMenu is defined in cl_ems_research.lua
                 if OpenResearchMenu then
                     OpenResearchMenu()
                 end
-            end
-        end,
+            end,
+        },
     })
 end
 
@@ -71,8 +63,8 @@ AddEventHandler('hbs_ambulance:client:stateLoaded', function()
             local prop = SpawnTerminalProp(coord)
             if prop then
                 table.insert(terminalProps, prop)
+                AttachTerminalTarget(prop, hospital.name)
             end
-            CreateTerminalZone(hospital.name, coord)
         end
     end
     Utils.Debug('EMS terminals spawned:', #terminalProps)

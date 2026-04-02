@@ -1,13 +1,13 @@
--- Hospital zones, NPC spawn, check-in, beds, rehab
+-- Hospital zones, NPC spawn, check-in via ox_target, beds via zone interaction
 
-local hospitalNPCs  = {}
-local activeZones   = {}
+local hospitalNPCs = {}
+local activeZones  = {}
 
--- ── Spawn NPC doctor ──────────────────────────────────────────────────────
+-- ── Spawn NPC doctor and attach ox_target ─────────────────────────────────
 
 local function SpawnNPC(hospital)
-    local npc    = hospital.npc
-    local model  = GetHashKey(npc.model)
+    local npc   = hospital.npc
+    local model = GetHashKey(npc.model)
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(10) end
 
@@ -20,62 +20,58 @@ local function SpawnNPC(hospital)
     SetPedCanRagdoll(ped, false)
     FreezeEntityPosition(ped, true)
     SetModelAsNoLongerNeeded(model)
+
+    -- Attach ox_target interactions to the NPC ped
+    exports.ox_target:addLocalEntity(ped, {
+        {
+            label    = 'See Doctor',
+            icon     = 'fas fa-user-doctor',
+            distance = 3.0,
+            onSelect = function()
+                lib.progressBar({
+                    duration     = Config.NpcHealTime * 1000,
+                    label        = Locale('hospital_healing'),
+                    useWhileDead = false,
+                    canCancel    = true,
+                }, function(completed)
+                    if completed then
+                        TriggerServerEvent('hbs_ambulance:server:hospitalHeal')
+                    end
+                end)
+            end,
+        },
+        {
+            label    = 'Pay Bills',
+            icon     = 'fas fa-file-invoice-dollar',
+            distance = 3.0,
+            onSelect = function()
+                TriggerServerEvent('hbs_ambulance:server:payBills')
+            end,
+        },
+        {
+            label       = 'Rehabilitation',
+            icon        = 'fas fa-pills',
+            distance    = 3.0,
+            description = string.format('Addiction treatment — $%s', Config.Addiction.treatment.cost),
+            onSelect    = function()
+                TriggerEvent('hbs_ambulance:client:startRehab')
+            end,
+        },
+    })
+
     return ped
 end
 
--- ── Hospital check-in menu ────────────────────────────────────────────────
+-- ── Bed interaction zones (coordinate-based, no target entity) ───────────
 
-local function OpenHospitalMenu(hospital)
-    lib.registerContext({
-        id    = 'hbs_hospital_menu',
-        title = hospital.name,
-        options = {
-            {
-                title       = Locale('hospital_see_doctor'),
-                description = Locale('hospital_see_doctor_desc'),
-                onSelect    = function()
-                    lib.progressBar({
-                        duration     = Config.NpcHealTime * 1000,
-                        label        = Locale('hospital_healing'),
-                        useWhileDead = false,
-                        canCancel    = true,
-                    }, function(completed)
-                        if completed then
-                            TriggerServerEvent('hbs_ambulance:server:hospitalHeal')
-                        end
-                    end)
-                end,
-            },
-            {
-                title       = Locale('hospital_pay_bills'),
-                description = Locale('hospital_pay_bills_desc'),
-                onSelect    = function()
-                    TriggerServerEvent('hbs_ambulance:server:payBills')
-                end,
-            },
-            {
-                title       = Locale('hospital_rehab_title'),
-                description = Locale('hospital_rehab_desc', Config.Addiction.treatment.cost),
-                onSelect    = function()
-                    TriggerEvent('hbs_ambulance:client:startRehab')
-                end,
-            },
-        },
-    })
-    lib.showContext('hbs_hospital_menu')
-end
-
--- ── Create zones ──────────────────────────────────────────────────────────
-
-local function CreateZones()
-    for i, hospital in ipairs(Config.Hospitals) do
-        -- Check-in zone
+local function CreateBedZones(hospital)
+    for _, bedCoord in ipairs(hospital.bedCoords or {}) do
         local zone = lib.zones.sphere({
-            coords  = vector3(hospital.checkin.x, hospital.checkin.y, hospital.checkin.z),
-            radius  = Config.CheckInRadius,
+            coords  = vector3(bedCoord.x, bedCoord.y, bedCoord.z),
+            radius  = Config.BedInteractRadius,
             debug   = Config.Debug,
             onEnter = function()
-                lib.showTextUI(Locale('hospital_checkin_hint'), { position = 'top-center' })
+                lib.showTextUI(Locale('hospital_bed_hint'), { position = 'top-center' })
             end,
             onExit  = function()
                 lib.hideTextUI()
@@ -83,61 +79,55 @@ local function CreateZones()
             inside  = function()
                 if IsControlJustPressed(0, 38) then   -- E
                     lib.hideTextUI()
-                    OpenHospitalMenu(hospital)
+                    lib.progressBar({
+                        duration     = Config.NpcHealTime * 1000,
+                        label        = Locale('hospital_healing'),
+                        useWhileDead = false,
+                        canCancel    = true,
+                    }, function(done)
+                        if done then
+                            TriggerServerEvent('hbs_ambulance:server:hospitalHeal')
+                        end
+                    end)
                 end
             end,
         })
         table.insert(activeZones, zone)
-
-        -- Bed zones
-        for _, bedCoord in ipairs(hospital.beds or {}) do
-            local bedZone = lib.zones.sphere({
-                coords  = bedCoord,
-                radius  = Config.BedRadius,
-                debug   = Config.Debug,
-                onEnter = function()
-                    lib.showTextUI(Locale('hospital_bed_hint'), { position = 'top-center' })
-                end,
-                onExit  = function()
-                    lib.hideTextUI()
-                end,
-                inside  = function()
-                    if IsControlJustPressed(0, 38) then
-                        lib.hideTextUI()
-                        lib.progressBar({
-                            duration     = Config.NpcHealTime * 1000,
-                            label        = Locale('hospital_healing'),
-                            useWhileDead = false,
-                            canCancel    = true,
-                        }, function(done)
-                            if done then
-                                TriggerServerEvent('hbs_ambulance:server:hospitalHeal')
-                            end
-                        end)
-                    end
-                end,
-            })
-            table.insert(activeZones, bedZone)
-        end
-
-        -- Spawn NPC
-        hospitalNPCs[i] = SpawnNPC(hospital)
-
-        -- Hospital blip
-        local blip = AddBlipForCoord(hospital.coords.x, hospital.coords.y, hospital.coords.z)
-        SetBlipSprite(blip, Config.HospitalBlip.sprite)
-        SetBlipColour(blip, Config.HospitalBlip.color)
-        SetBlipScale(blip, Config.HospitalBlip.scale)
-        SetBlipAsShortRange(blip, true)
-        BeginTextCommandSetBlipName('STRING')
-        AddTextComponentSubstringPlayerName(hospital.name)
-        EndTextCommandSetBlipName(blip)
     end
 end
 
+-- ── Hospital blip ─────────────────────────────────────────────────────────
+
+local function AddHospitalBlip(hospital)
+    local blip = AddBlipForCoord(hospital.blipCoords.x, hospital.blipCoords.y, hospital.blipCoords.z)
+    SetBlipSprite(blip, Config.HospitalBlip.sprite)
+    SetBlipColour(blip, Config.HospitalBlip.color)
+    SetBlipScale(blip, Config.HospitalBlip.scale)
+    SetBlipAsShortRange(blip, true)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName(hospital.name)
+    EndTextCommandSetBlipName(blip)
+end
+
+-- ── Initialise all hospitals ──────────────────────────────────────────────
+
 CreateThread(function()
     Wait(3000)   -- wait for world to settle
-    CreateZones()
+    for i, hospital in ipairs(Config.Hospitals) do
+        hospitalNPCs[i] = SpawnNPC(hospital)
+        CreateBedZones(hospital)
+        AddHospitalBlip(hospital)
+    end
+end)
+
+-- ── Clean up on resource stop ─────────────────────────────────────────────
+
+AddEventHandler('onResourceStop', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    for _, ped in ipairs(hospitalNPCs) do
+        if DoesEntityExist(ped) then DeleteEntity(ped) end
+    end
+    hospitalNPCs = {}
 end)
 
 -- ── Net events ────────────────────────────────────────────────────────────
@@ -153,12 +143,11 @@ RegisterNetEvent('hbs_ambulance:client:billSent', function(amount)
     Notify(Locale('hospital_bill_sent', amount), 'error', 8000)
 end)
 
--- ── Rehab event (addiction module hooks into this) ────────────────────────
+-- ── Rehab event ───────────────────────────────────────────────────────────
 
 AddEventHandler('hbs_ambulance:client:startRehab', function()
-    -- Check if player actually has any addiction
     local hasAddiction = false
-    for _, level in pairs(LocalState.addiction) do
+    for _, level in pairs(LocalState.addiction or {}) do
         if level > 0 then hasAddiction = true; break end
     end
     if not hasAddiction then

@@ -54,6 +54,7 @@ files {
 dependencies {
     'qbx_core',
     'ox_lib',
+    'ox_target',
     'ox_inventory',
     'oxmysql',
 }

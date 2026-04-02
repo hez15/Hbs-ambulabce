@@ -1,4 +1,4 @@
--- Vehicle interactions: stretcher loading, ambulance door lock, heli EMS
+-- Vehicle interactions: stretcher loading/unloading via ox_target, ambulance door lock
 
 local loadedPatient   = nil   -- server src of loaded patient
 local ambulanceLocked = false
@@ -19,41 +19,11 @@ local function IsAmbulanceModel(veh)
     return false
 end
 
-local function IsHeliModel(veh)
-    local model = GetEntityModel(veh)
-    for _, m in ipairs(Config.HelicopterModels) do
-        if model == GetHashKey(m) then return true end
-    end
-    return false
-end
-
-local function IsDriverSeat(veh)
-    local ped = PlayerPedId()
-    return GetPedInVehicleSeat(veh, -1) == ped
-end
-
 local function InAmbulance()
     local veh = GetCurrentVehicle()
-    return veh and IsAmbulanceModel(veh) and IsDriverSeat(veh)
-end
-
--- ── Find nearest downed player ────────────────────────────────────────────
-
-local function GetNearestDowned(maxDist)
-    maxDist = maxDist or Config.MaxStretcherDist
-    local myCoords = GetEntityCoords(PlayerPedId())
-    for _, pid in ipairs(GetActivePlayers()) do
-        if pid ~= PlayerId() then
-            local srv  = GetPlayerServerId(pid)
-            local ped  = GetPlayerPed(pid)
-            if GetStateBagValue('player:' .. srv, SB.Keys.isDowned) then
-                if #(GetEntityCoords(ped) - myCoords) <= maxDist then
-                    return srv, ped
-                end
-            end
-        end
-    end
-    return nil, nil
+    if not veh then return false end
+    if not IsAmbulanceModel(veh) then return false end
+    return GetPedInVehicleSeat(veh, -1) == PlayerPedId()
 end
 
 -- ── Load patient into ambulance ───────────────────────────────────────────
@@ -69,12 +39,11 @@ local function LoadPatient(targetSrc, targetPed)
         canCancel    = true,
     }, function(done)
         if not done then return end
-        -- Put patient into back seat
         SetPedIntoVehicle(targetPed, veh, 1)
         loadedPatient = targetSrc
 
         if Config.AmbulanceLockOnLoad then
-            SetVehicleDoorsLocked(veh, 3)   -- all locked except driver
+            SetVehicleDoorsLocked(veh, 3)
             ambulanceLocked = true
         end
 
@@ -102,32 +71,56 @@ local function UnloadPatient()
     Notify(Locale('stretcher_unloaded'), 'success')
 end
 
--- ── Interaction thread ────────────────────────────────────────────────────
+-- ── ox_target: add / remove stretcher-load option on downed peds ─────────
+
+local function AddStretcherTarget(ped, serverId)
+    exports.ox_target:addEntity(ped, {
+        {
+            label       = 'Load into Ambulance',
+            icon        = 'fas fa-ambulance',
+            distance    = Config.MaxStretcherDist,
+            canInteract = function() return InAmbulance() and not loadedPatient end,
+            onSelect    = function() LoadPatient(serverId, ped) end,
+        },
+    })
+end
+
+local function RemoveStretcherTarget(ped)
+    exports.ox_target:removeEntity(ped, { 'Load into Ambulance' })
+end
+
+-- ── Track downed state changes ────────────────────────────────────────────
+
+AddStateBagChangeHandler(SB.Keys.isDowned, nil, function(bagName, _, value)
+    local serverId = tonumber(bagName:match('player:(%d+)'))
+    if not serverId then return end
+    local localId = GetPlayerFromServerId(serverId)
+    if localId < 0 or localId == PlayerId() then return end
+    local ped = GetPlayerPed(localId)
+    if not DoesEntityExist(ped) then return end
+
+    if value then
+        AddStretcherTarget(ped, serverId)
+    else
+        RemoveStretcherTarget(ped)
+    end
+end)
+
+-- ── Unload via textUI while patient is loaded (driver-side action) ────────
 
 CreateThread(function()
     while true do
-        Wait(0)
-        if not IsPlayerLoaded() then Wait(2000); goto continue end
-        if not InAmbulance() then Wait(1000); goto continue end
-
-        local targetSrc, targetPed = GetNearestDowned()
-
-        if targetSrc and not loadedPatient then
-            lib.showTextUI(Locale('stretcher_load_hint'), { position = 'top-center' })
-            if IsControlJustPressed(0, 38) then   -- E
-                lib.hideTextUI()
-                LoadPatient(targetSrc, targetPed)
-            end
-        elseif loadedPatient then
+        if loadedPatient and InAmbulance() then
             lib.showTextUI(Locale('stretcher_unload_hint'), { position = 'top-center' })
-            if IsControlJustPressed(0, 38) then
+            if IsControlJustPressed(0, 38) then   -- E
                 lib.hideTextUI()
                 UnloadPatient()
             end
+            Wait(0)
         else
             lib.hideTextUI()
+            Wait(500)
         end
-        ::continue::
     end
 end)
 

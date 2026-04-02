@@ -6,7 +6,7 @@ Config = {}
 Config.Debug = false
 Config.EmsJob = 'ambulance'          -- Job name for EMS players
 Config.MinEmsOnline = 1              -- Minimum EMS online before NPC doctors activate
-Config.UseTarget = false             -- Use ox_target for interactions (false = key prompt)
+Config.UseTarget = true              -- Use ox_target for interactions
 Config.InteractKey = 38             -- E key
 
 --[[
