@@ -237,15 +237,24 @@ function ExaminePatient(targetSrc, targetPed)
     local addictionLines = {}
     for sub, lvl in pairs(addiction) do
         if lvl > 0 then
-            table.insert(addictionLines, string.format('%s: Level %d', sub, lvl))
+            local levelLabel = (Config.Addiction.levelLabels or {})[lvl] or ('Level ' .. lvl)
+            table.insert(addictionLines, string.format('%s: %s', sub, levelLabel))
         end
     end
 
     local options = {
-        { title = 'Injuries',  description = table.concat(injuryLines, ', '),    disabled = true },
-        { title = 'Stress',    description = string.format('%d / 100', stress),  disabled = true },
-        { title = 'Addiction', description = #addictionLines > 0 and table.concat(addictionLines, ', ') or 'None', disabled = true },
+        { title = 'Injuries',      description = table.concat(injuryLines, ', '),    disabled = true },
+        { title = 'Stress Level',  description = string.format('%d / 100', stress),  disabled = true },
+        { title = 'Addiction',     description = #addictionLines > 0 and table.concat(addictionLines, ', ') or 'None detected', disabled = true },
     }
+
+    if #addictionLines > 0 then
+        table.insert(options, {
+            title       = 'Treatment Options',
+            description = 'Administer methadone via [K] to reduce addiction level',
+            disabled    = true,
+        })
+    end
 
     lib.registerContext({ id = 'hbs_examine_patient', title = 'Patient Examination', options = options })
     lib.showContext('hbs_examine_patient')
@@ -257,13 +266,24 @@ end
 function AdministerMeds(targetSrc)
     if not HasUnlock('administer_meds') then return false end
 
+    -- Check patient addiction for methadone description
+    local addiction    = GetStateBagValue('player:' .. targetSrc, SB.Keys.addiction) or {}
+    local worstLevel   = 0
+    local worstSub     = nil
+    for sub, lvl in pairs(addiction) do
+        if lvl > worstLevel then worstLevel = lvl; worstSub = sub end
+    end
+    local methDesc = worstSub and worstLevel > 0
+        and string.format('Reduce %s addiction (Level %d → %d)', worstSub, worstLevel, math.max(0, worstLevel - 1))
+        or  'No active addiction detected'
+
     lib.registerContext({
         id    = 'hbs_administer_menu',
         title = 'Administer Medication',
         options = {
             {
                 title       = 'Morphine',
-                description = 'Treat critical/fracture injuries + restore health',
+                description = 'Treat critical/fracture injuries + restore health (may increase addiction)',
                 onSelect    = function()
                     RequestAnimDict('mini@repair')
                     while not HasAnimDictLoaded('mini@repair') do Wait(10) end
@@ -278,7 +298,7 @@ function AdministerMeds(targetSrc)
             },
             {
                 title       = 'Painkiller',
-                description = 'Reduce patient stress and restore some health',
+                description = 'Reduce patient stress, restore health, and relieve withdrawal',
                 onSelect    = function()
                     RequestAnimDict('mini@repair')
                     while not HasAnimDictLoaded('mini@repair') do Wait(10) end
@@ -288,6 +308,22 @@ function AdministerMeds(targetSrc)
                         anim = { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 16 },
                     }, function(done)
                         if done then TriggerServerEvent('hbs_ambulance:server:administerMed', targetSrc, 'painkiller') end
+                    end)
+                end,
+            },
+            {
+                title       = 'Methadone',
+                description = methDesc .. ' (20 min CD) | +' .. (Config.EMSResearch.xpRewards.addictionTreat or 40) .. ' XP',
+                disabled    = worstLevel <= 0,
+                onSelect    = function()
+                    RequestAnimDict('mini@repair')
+                    while not HasAnimDictLoaded('mini@repair') do Wait(10) end
+                    lib.progressBar({
+                        duration = 8000, label = 'Administering methadone...',
+                        useWhileDead = false, canCancel = true,
+                        anim = { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 16 },
+                    }, function(done)
+                        if done then TriggerServerEvent('hbs_ambulance:server:administerMed', targetSrc, 'methadone') end
                     end)
                 end,
             },

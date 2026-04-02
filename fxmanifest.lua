@@ -21,6 +21,7 @@ client_scripts {
     'client/cl_injury.lua',
     'client/cl_ems.lua',
     'client/cl_ems_research.lua',
+    'client/cl_ems_terminal.lua',
     'client/cl_hospital.lua',
     'client/cl_items.lua',
     'client/cl_stress.lua',

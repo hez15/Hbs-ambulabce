@@ -87,9 +87,9 @@ Config.Hospitals = {
             vector4(344.6, -585.4, 29.3, 340.0),
             vector4(348.6, -585.4, 29.3, 340.0),
         },
-        spawnCoord = vector4(307.5, -600.1, 43.3, 255.0),
-        npcCoord   = vector4(307.2, -570.0, 43.3, 255.0),
-        npcModel   = 's_m_m_doctor_01',
+        spawnCoord           = vector4(307.5, -600.1, 43.3, 255.0),
+        npc                  = { coords = vector4(307.2, -570.0, 43.3, 255.0), model = 's_m_m_doctor_01' },
+        researchTerminalCoord= vector4(309.5, -567.5, 43.3, 255.0),
     },
     {
         name       = 'Sandy Shores Medical',
@@ -98,9 +98,9 @@ Config.Hospitals = {
         bedCoords  = {
             vector4(1839.6, 3672.4, 34.3, 25.0),
         },
-        spawnCoord = vector4(1839.6, 3680.4, 34.3, 200.0),
-        npcCoord   = vector4(1833.0, 3668.0, 34.3, 60.0),
-        npcModel   = 's_m_m_doctor_01',
+        spawnCoord           = vector4(1839.6, 3680.4, 34.3, 200.0),
+        npc                  = { coords = vector4(1833.0, 3668.0, 34.3, 60.0), model = 's_m_m_doctor_01' },
+        researchTerminalCoord= vector4(1835.0, 3665.5, 34.3, 60.0),
     },
     {
         name       = 'Paleto Bay Medical',
@@ -109,9 +109,9 @@ Config.Hospitals = {
         bedCoords  = {
             vector4(-246.0, 6331.0, 32.4, 0.0),
         },
-        spawnCoord = vector4(-240.0, 6340.0, 32.4, 180.0),
-        npcCoord   = vector4(-250.0, 6325.0, 32.4, 90.0),
-        npcModel   = 's_m_m_doctor_01',
+        spawnCoord           = vector4(-240.0, 6340.0, 32.4, 180.0),
+        npc                  = { coords = vector4(-250.0, 6325.0, 32.4, 90.0), model = 's_m_m_doctor_01' },
+        researchTerminalCoord= vector4(-247.5, 6323.0, 32.4, 90.0),
     },
 }
 
@@ -292,13 +292,19 @@ Config.EMSResearch = {
         transport       = 50,   -- load + deliver patient to hospital
         dutyPassive     = 10,   -- every 5 minutes on duty
         firstResponder  = 25,   -- respond to dispatch within window
+        addictionTreat  = 40,   -- reduce a patient's addiction level via methadone
     },
 
-    dutyPassiveInterval = 300,   -- seconds between passive XP ticks
-    dispatchWindowSecs  = 180,   -- seconds after dispatch to earn firstResponder bonus
-    handsOnlyCooldown   = 180,   -- seconds between hands-only revives (Tier 5)
-    mentorDuration      = 1800,  -- seconds a mentor boost lasts (30 min)
-    administerCooldown  = 600,   -- seconds between administer_meds uses (Tier 3)
+    dutyPassiveInterval   = 300,   -- seconds between passive XP ticks
+    dispatchWindowSecs    = 180,   -- seconds after dispatch to earn firstResponder bonus
+    handsOnlyCooldown     = 180,   -- seconds between hands-only revives (Tier 5)
+    mentorDuration        = 1800,  -- seconds a mentor boost lasts (30 min)
+    administerCooldown    = 600,   -- seconds between administer_meds uses (Tier 3)
+    methadoneCooldown     = 1200,  -- seconds between EMS methadone administrations per patient
+
+    -- Research terminal prop
+    terminalModel  = 'prop_computer_01b',
+    terminalRadius = 2.0,
 
     -- Ability definitions (3 per tier, player picks 2)
     abilities = {

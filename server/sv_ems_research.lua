@@ -11,6 +11,9 @@ local handsOnlyCooldowns = {}
 -- Administer meds per-EMS cooldown: { [src] = os.time() }
 local administerCooldowns = {}
 
+-- Methadone per-EMS per-patient cooldown: { [src] = { [targetSrc] = os.time() } }
+local methadoneCooldowns = {}
+
 -- ── Helpers ───────────────────────────────────────────────────────────────
 
 local function GetEMSTier(src)
@@ -241,6 +244,9 @@ RegisterNetEvent('hbs_ambulance:server:administerMed', function(targetSrc, medTy
         -- Restore some health
         local ped = GetPlayerPed(targetSrc)
         SetEntityHealth(ped, math.min(200, GetEntityHealth(ped) + 20))
+        -- Roll for addiction increase on the patient (EMS-administered morphine still risks addiction)
+        TriggerEvent('hbs_ambulance:server:processAddiction', targetSrc, 'morphine')
+
     elseif medType == 'painkiller' then
         -- Stress reduction + slight health restore
         local curStress = SB.Get(targetSrc, 'stress') or 0
@@ -250,6 +256,64 @@ RegisterNetEvent('hbs_ambulance:server:administerMed', function(targetSrc, medTy
         TriggerClientEvent('hbs_ambulance:client:setStress', targetSrc, newStress)
         local ped = GetPlayerPed(targetSrc)
         SetEntityHealth(ped, math.min(200, GetEntityHealth(ped) + 10))
+        -- Painkiller from EMS also relieves active withdrawal
+        TriggerEvent('hbs_ambulance:server:relieveWithdrawal', targetSrc, 'morphine')
+        TriggerEvent('hbs_ambulance:server:relieveWithdrawal', targetSrc, 'painkiller')
+
+    elseif medType == 'methadone' then
+        -- Dedicated methadone cooldown (per-patient, longer than general cooldown)
+        if not methadoneCooldowns[src] then methadoneCooldowns[src] = {} end
+        local lastMeth = methadoneCooldowns[src][targetSrc] or 0
+        if (os.time() - lastMeth) < Config.EMSResearch.methadoneCooldown then
+            local remaining = Config.EMSResearch.methadoneCooldown - (os.time() - lastMeth)
+            TriggerClientEvent('hbs_ambulance:client:notify', src, {
+                msg = string.format('Methadone still on cooldown for this patient (%ds).', remaining),
+                type = 'error'
+            })
+            return
+        end
+        methadoneCooldowns[src][targetSrc] = os.time()
+
+        -- Reduce the patient's highest active addiction level by 1
+        local addictions  = DB.LoadAddiction(cid)
+        local reduced     = false
+        local worstSub    = nil
+        local worstLevel  = 0
+        for sub, data in pairs(addictions) do
+            if data.level > worstLevel then
+                worstLevel = data.level
+                worstSub   = sub
+            end
+        end
+        if worstSub and worstLevel > 0 then
+            local newLevel = math.max(0, worstLevel - 1)
+            MySQL.query.await('UPDATE hbs_addiction SET level=? WHERE citizenid=? AND substance=?',
+                { newLevel, cid, worstSub })
+            -- Rebuild and sync addiction state
+            local updatedAddictions = DB.LoadAddiction(cid)
+            local addLevel = {}
+            for sub, data in pairs(updatedAddictions) do addLevel[sub] = data.level end
+            SB.Set(targetSrc, 'addiction', addLevel)
+            TriggerClientEvent('hbs_ambulance:client:addictionUpdated', targetSrc, addLevel)
+            -- Relieve withdrawal effects immediately
+            TriggerEvent('hbs_ambulance:server:relieveWithdrawal', targetSrc, worstSub)
+            reduced = true
+        end
+
+        if reduced then
+            TriggerClientEvent('hbs_ambulance:client:notify', src, {
+                msg = string.format('Methadone administered — %s addiction reduced.', worstSub or 'patient'),
+                type = 'success'
+            })
+            -- Award addiction treatment XP
+            TriggerEvent('hbs_ambulance:server:awardEMSXP', src,
+                Config.EMSResearch.xpRewards.addictionTreat)
+        else
+            TriggerClientEvent('hbs_ambulance:client:notify', src, {
+                msg = 'Patient has no active addiction to treat.', type = 'inform'
+            })
+        end
+        return  -- early return; skip generic success notify below
     end
 
     TriggerClientEvent('hbs_ambulance:client:notify', src, {
