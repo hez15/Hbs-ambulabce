@@ -12,6 +12,8 @@ window.addEventListener('message', function (e) {
         case 'updateStress':   updateStress(data.value);              break;
         case 'updateAddiction':updateAddiction(data.value);           break;
         case 'updateInjuries': updateInjuries(data.injuries);        break;
+        case 'withdrawalActive': setIcon('withdrawal', true);           break;
+        case 'withdrawalEnded':  setIcon('withdrawal', false);          break;
         case 'showDeathScreen':showDeathScreen(data.bleedoutMs);      break;
         case 'hideDeathScreen':hideDeathScreen();                     break;
         case 'updateTimer':    updateTimer(data.ms);                  break;
@@ -41,12 +43,11 @@ function updateStress(value) {
 // ── Addiction bar ─────────────────────────────────────────────────────────────
 
 function updateAddiction(addictionTable) {
-    // addictionTable: { substance: { level: N }, ... }
-    // Show worst level across all substances
+    // addictionTable: { morphine: 2, painkiller: 1, ... } — values are plain numbers
     let maxLevel = 0;
     if (addictionTable && typeof addictionTable === 'object') {
         for (const sub in addictionTable) {
-            const lvl = (addictionTable[sub] && addictionTable[sub].level) || 0;
+            const lvl = typeof addictionTable[sub] === 'number' ? addictionTable[sub] : 0;
             if (lvl > maxLevel) maxLevel = lvl;
         }
     }

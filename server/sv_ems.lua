@@ -97,7 +97,7 @@ RegisterNetEvent('hbs_ambulance:server:emsTreat', function(targetSrc)
     for part, sev in pairs(injuries) do
         local heal = sev == 'scratch' or sev == 'minor'
         if traumaSplint and sev == 'fracture' then heal = true end
-        if sev == 'critical' then heel = false end  -- critical needs full surgery
+        if sev == 'critical' then heal = false end  -- critical needs full surgery
         if heal then DB.SaveInjury(cid, part, nil) end
     end
 
@@ -110,6 +110,76 @@ RegisterNetEvent('hbs_ambulance:server:emsTreat', function(targetSrc)
     HBS.Set(targetSrc, 'injuries', updated)
     TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
+end)
+
+-- ── Addiction therapy (Tier 3 unlock) ────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:administerDetox', function(targetSrc)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+    if not HasUnlock(src, 'addiction_therapy') then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires Addiction Therapy unlock.')
+        return
+    end
+
+    -- Consume one methadone from EMS inventory
+    local hasMethadone = exports.ox_inventory:GetItemCount(src, 'methadone') >= 1
+    if not hasMethadone then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires methadone in inventory.')
+        return
+    end
+    exports.ox_inventory:RemoveItem(src, 'methadone', 1)
+
+    local cid = HBSUtils.GetCitizenId(targetSrc)
+    if not cid then return end
+
+    -- Reduce each substance addiction by 1 (min 0)
+    local addiction = DB.LoadAddiction(cid)
+    for substance, level in pairs(addiction) do
+        local newLevel = math.max(0, level - 1)
+        DB.SaveAddiction(cid, substance, newLevel)
+        addiction[substance] = newLevel
+    end
+
+    HBS.Set(targetSrc, 'addiction', addiction)
+    TriggerClientEvent('hbs_ambulance:client:addictionUpdate', targetSrc, addiction)
+    TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'success', 'Detox administered — addiction reduced.')
+    AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
+end)
+
+-- ── Full detox (Tier 4 unlock) ────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:fullDetox', function(targetSrc)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+    if not HasUnlock(src, 'full_detox') then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires Full Detox unlock.')
+        return
+    end
+
+    -- Costs 2 methadone
+    local hasMethadone = exports.ox_inventory:GetItemCount(src, 'methadone') >= 2
+    if not hasMethadone then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires 2x methadone.')
+        return
+    end
+    exports.ox_inventory:RemoveItem(src, 'methadone', 2)
+
+    local cid = HBSUtils.GetCitizenId(targetSrc)
+    if not cid then return end
+
+    DB.LoadAddiction(cid) -- load to get substances
+    local cleared = {}
+    local addiction = DB.LoadAddiction(cid)
+    for substance in pairs(addiction) do
+        DB.SaveAddiction(cid, substance, 0)
+        cleared[substance] = 0
+    end
+
+    HBS.Set(targetSrc, 'addiction', cleared)
+    TriggerClientEvent('hbs_ambulance:client:addictionUpdate', targetSrc, cleared)
+    TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'success', 'Full detox complete — all addiction cleared.')
+    AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat * 2)
 end)
 
 -- ── Full surgery (Tier 4 unlock) ──────────────────────────────────────────

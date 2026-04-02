@@ -154,12 +154,58 @@ exports.ox_target:addGlobalPlayer({
                 id      = 'hbs_triage_' .. srv,
                 title   = 'Triage Patient',
                 options = {
-                    { title = '🔴 Critical', onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'critical') end },
-                    { title = '🟠 Moderate', onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'moderate') end },
-                    { title = '🟡 Minor',    onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'minor')    end },
+                    { title = 'Critical', onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'critical') end },
+                    { title = 'Moderate', onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'moderate') end },
+                    { title = 'Minor',    onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'minor')    end },
                 },
             })
             lib.showContext('hbs_triage_' .. srv)
+        end,
+    },
+    {
+        label       = 'Administer Detox',
+        icon        = 'fas fa-flask-vial',
+        distance    = 3.0,
+        canInteract = function() return HBSIsEMS() and HBSHasUnlock('addiction_therapy') end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            CreateThread(function()
+                local completed = lib.progressCircle({
+                    duration     = 10000,
+                    label        = 'Administering Detox...',
+                    useWhileDead = false,
+                    canCancel    = true,
+                    disable      = { move = false, car = true, combat = true },
+                    anim         = { dict = 'mp_suicide', clip = 'pill', flag = 49 },
+                })
+                if completed then
+                    TriggerServerEvent('hbs_ambulance:server:administerDetox', srv)
+                end
+            end)
+        end,
+    },
+    {
+        label       = 'Full Detox Treatment',
+        icon        = 'fas fa-shield-virus',
+        distance    = 3.0,
+        canInteract = function() return HBSIsEMS() and HBSHasUnlock('full_detox') end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            CreateThread(function()
+                local completed = lib.progressCircle({
+                    duration     = 25000,
+                    label        = 'Full Detox Treatment...',
+                    useWhileDead = false,
+                    canCancel    = true,
+                    disable      = { move = true, car = true, combat = true },
+                    anim         = { dict = 'mini@crate_search@std@ps', clip = 'crate_search_ps_std', flag = 49 },
+                })
+                if completed then
+                    TriggerServerEvent('hbs_ambulance:server:fullDetox', srv)
+                end
+            end)
         end,
     },
 })

@@ -133,13 +133,147 @@ HBSConfig.EMSResearch = {
         revive = 75, treat = 30, transport = 50,
     },
     abilities = {
-        rapid_revive     = { tier = 2, label = 'Rapid Revive',        desc = 'Revive speed -30%' },
-        patient_examine  = { tier = 2, label = 'Patient Examination',  desc = 'See injuries/stress/addiction on examine' },
-        trauma_splint    = { tier = 3, label = 'Trauma Splint',        desc = 'Treat fractures without a splint item' },
-        iv_therapy       = { tier = 3, label = 'IV Therapy',           desc = 'Treatment restores 75 HP to patient' },
-        full_surgery     = { tier = 4, label = 'Full Surgery',         desc = 'Clear ALL injuries (20s procedure)' },
-        adrenaline_revive= { tier = 4, label = 'Adrenaline Revive',   desc = 'Revived player gets 20s adrenaline boost' },
-        hands_only_revive= { tier = 5, label = 'Hands-Only Revive',   desc = 'Revive without item (3 min cooldown)' },
-        mass_casualty    = { tier = 5, label = 'Mass Casualty Alert',  desc = 'Broadcast emergency to all EMS' },
+        rapid_revive      = { tier = 2, label = 'Rapid Revive',         desc = 'Revive speed -30%' },
+        patient_examine   = { tier = 2, label = 'Patient Examination',  desc = 'See injuries/stress/addiction on examine' },
+        trauma_splint     = { tier = 3, label = 'Trauma Splint',        desc = 'Treat fractures without a splint item' },
+        iv_therapy        = { tier = 3, label = 'IV Therapy',           desc = 'Treatment restores 75 HP to patient' },
+        addiction_therapy = { tier = 3, label = 'Addiction Therapy',    desc = 'Administer detox to reduce patient addiction by 1 level' },
+        full_surgery      = { tier = 4, label = 'Full Surgery',         desc = 'Clear ALL injuries (20s procedure)' },
+        adrenaline_revive = { tier = 4, label = 'Adrenaline Revive',   desc = 'Revived player gets -50 stress + full HP' },
+        full_detox        = { tier = 4, label = 'Full Detox',           desc = 'Completely clear all addiction from patient' },
+        hands_only_revive = { tier = 5, label = 'Hands-Only Revive',   desc = 'Revive without item (3 min cooldown)' },
+        mass_casualty     = { tier = 5, label = 'Mass Casualty Alert',  desc = 'Broadcast emergency to all EMS' },
     },
+}
+
+-- ── Crafting ──────────────────────────────────────────────────────────────────
+-- Ingredients are ox_inventory item names
+-- tier = minimum research tier required
+-- craftTime = seconds for progress circle
+
+HBSConfig.Crafting = {
+    -- ── Tier 1: EMT ─────────────────────────────────────────────────────────
+    bandage = {
+        label     = 'Bandage',
+        tier      = 1,
+        craftTime = 10,
+        output    = { item = 'bandage', amount = 3 },
+        ingredients = {
+            { item = 'med_gauze',   amount = 2 },
+            { item = 'med_tape',    amount = 1 },
+        },
+    },
+    painkiller = {
+        label     = 'Painkiller',
+        tier      = 1,
+        craftTime = 8,
+        output    = { item = 'painkiller', amount = 2 },
+        ingredients = {
+            { item = 'med_pills',   amount = 3 },
+        },
+    },
+
+    -- ── Tier 2: Paramedic ────────────────────────────────────────────────────
+    splint = {
+        label     = 'Splint',
+        tier      = 2,
+        craftTime = 15,
+        output    = { item = 'splint', amount = 1 },
+        ingredients = {
+            { item = 'med_gauze',   amount = 3 },
+            { item = 'med_tape',    amount = 2 },
+            { item = 'med_rod',     amount = 1 },
+        },
+    },
+    morphine = {
+        label     = 'Morphine Shot',
+        tier      = 2,
+        craftTime = 20,
+        output    = { item = 'morphine', amount = 1 },
+        ingredients = {
+            { item = 'med_syringe', amount = 1 },
+            { item = 'med_opioid',  amount = 2 },
+        },
+    },
+
+    -- ── Tier 3: Senior Paramedic ─────────────────────────────────────────────
+    firstaidkit = {
+        label     = 'First Aid Kit',
+        tier      = 3,
+        craftTime = 25,
+        output    = { item = 'firstaidkit', amount = 1 },
+        ingredients = {
+            { item = 'bandage',     amount = 2 },
+            { item = 'med_gauze',   amount = 4 },
+            { item = 'med_tape',    amount = 2 },
+            { item = 'med_pills',   amount = 2 },
+        },
+    },
+    methadone = {
+        label     = 'Methadone (Detox)',
+        tier      = 3,
+        craftTime = 30,
+        output    = { item = 'methadone', amount = 2 },
+        ingredients = {
+            { item = 'med_syringe', amount = 1 },
+            { item = 'med_detox',   amount = 3 },
+        },
+    },
+    bloodbag = {
+        label     = 'Blood Bag',
+        tier      = 3,
+        craftTime = 20,
+        output    = { item = 'bloodbag', amount = 1 },
+        ingredients = {
+            { item = 'med_bloodpack', amount = 1 },
+            { item = 'med_tube',      amount = 1 },
+        },
+    },
+
+    -- ── Tier 4: Lead Medic ───────────────────────────────────────────────────
+    defibrillator = {
+        label     = 'Defibrillator Charge',
+        tier      = 4,
+        craftTime = 40,
+        output    = { item = 'defibrillator', amount = 1 },
+        ingredients = {
+            { item = 'med_defib_pad', amount = 2 },
+            { item = 'med_battery',   amount = 1 },
+            { item = 'med_tube',      amount = 1 },
+        },
+    },
+    surgical_kit = {
+        label     = 'Surgical Kit',
+        tier      = 4,
+        craftTime = 45,
+        output    = { item = 'surgical_kit', amount = 1 },
+        ingredients = {
+            { item = 'med_scalpel',   amount = 1 },
+            { item = 'med_gauze',     amount = 5 },
+            { item = 'med_syringe',   amount = 2 },
+            { item = 'med_opioid',    amount = 3 },
+        },
+    },
+
+    -- ── Tier 5: Chief of Medicine ────────────────────────────────────────────
+    advanced_surgical_pack = {
+        label     = 'Advanced Surgical Pack',
+        tier      = 5,
+        craftTime = 60,
+        output    = { item = 'advanced_surgical_pack', amount = 1 },
+        ingredients = {
+            { item = 'surgical_kit',  amount = 1 },
+            { item = 'bloodbag',      amount = 1 },
+            { item = 'morphine',      amount = 1 },
+            { item = 'med_detox',     amount = 2 },
+        },
+    },
+}
+
+-- Crafting table location (ox_target zone at EMS base)
+HBSConfig.CraftingTable = {
+    coords   = vector3(297.7, -584.5, 43.3), -- Sandy Shores Medical (adjust to your server)
+    heading  = 0.0,
+    label    = 'Medical Crafting Table',
+    radius   = 1.5,
 }
