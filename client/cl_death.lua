@@ -176,6 +176,7 @@ RegisterNetEvent('hbs_ambulance:client:respawnAt', function(coords)
     DoScreenFadeOut(500)
     Wait(600)
     local ped = PlayerPedId()
+    SetEntityInvincible(ped, false)      -- ensure damage works after respawn
     ClearPedTasksImmediately(ped)
     SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, true)
     SetEntityHeading(ped, coords.w or 0.0)

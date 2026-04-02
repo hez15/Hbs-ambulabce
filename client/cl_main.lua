@@ -18,6 +18,8 @@ local function OnPlayerLoaded()
     LocalState.loaded = true
     Utils.Debug('Player loaded — fetching state from server')
 
+    -- Ensure player is never stuck invincible from a previous session
+    SetEntityInvincible(PlayerPedId(), false)
     -- Prevent critical hits (headshots etc.) from instantly killing the player
     SetPlayerSuffersCriticalHits(PlayerId(), false)
 

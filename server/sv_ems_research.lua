@@ -437,6 +437,21 @@ end)
 
 -- ── Admin Commands ────────────────────────────────────────────────────────
 
+RegisterCommand('revive', function(src, args)
+    if src ~= 0 and not IsPlayerAceAllowed(src, 'hbs_ambulance.admin') then
+        if src ~= 0 then TriggerClientEvent('hbs_ambulance:client:notify', src,
+            { msg = 'No permission.', type = 'error' }) end
+        return
+    end
+    local targetId = tonumber(args[1]) or src
+    if not GetPlayerPed(targetId) then
+        print('[hbs_ambulance] /revive: player ' .. targetId .. ' not found')
+        return
+    end
+    TriggerEvent('hbs_ambulance:server:performRevive', src, targetId, false)
+    print(string.format('[hbs_ambulance] Admin revived player %d', targetId))
+end, true)
+
 RegisterCommand('setemstier', function(src, args)
     if src ~= 0 and not IsPlayerAceAllowed(src, 'hbs_ambulance.admin') then
         if src ~= 0 then TriggerClientEvent('hbs_ambulance:client:notify', src,

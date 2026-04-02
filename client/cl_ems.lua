@@ -162,7 +162,7 @@ exports.ox_target:addGlobalPlayer({
         canInteract = function(entity) return IsEMS() and PedIsDowned(entity) end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
-            if srv then Revive(srv, data.entity) end
+            if srv then CreateThread(function() Revive(srv, data.entity) end) end
         end,
     },
     {
@@ -172,7 +172,7 @@ exports.ox_target:addGlobalPlayer({
         canInteract = function(entity) return IsEMS() and PedIsDowned(entity) and not carryActive end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
-            if srv then StartCarry(srv, data.entity) end
+            if srv then CreateThread(function() StartCarry(srv, data.entity) end) end
         end,
     },
     {
@@ -183,13 +183,12 @@ exports.ox_target:addGlobalPlayer({
             if not IsEMS() then return false end
             local srv = PedToServerId(entity)
             if not srv then return false end
-            -- Only show when the target actually has injuries
-            local injuries = GetStateBagValue('player:' .. srv, SB.Keys.injuries) or {}
-            return next(injuries) ~= nil
+            -- Show on any player (downed or not) when EMS is nearby
+            return true
         end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
-            if srv then TreatWounds(srv) end
+            if srv then CreateThread(function() TreatWounds(srv) end) end
         end,
     },
     {
@@ -237,7 +236,7 @@ exports.ox_target:addGlobalPlayer({
         canInteract = function() return IsEMS() and HasUnlock('patient_examine') end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
-            if srv and ExaminePatient then ExaminePatient(srv, data.entity) end
+            if srv and ExaminePatient then CreateThread(function() ExaminePatient(srv, data.entity) end) end
         end,
     },
     {
@@ -247,7 +246,7 @@ exports.ox_target:addGlobalPlayer({
         canInteract = function() return IsEMS() and HasUnlock('administer_meds') end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
-            if srv and AdministerMeds then AdministerMeds(srv) end
+            if srv and AdministerMeds then CreateThread(function() AdministerMeds(srv) end) end
         end,
     },
     {
@@ -257,7 +256,7 @@ exports.ox_target:addGlobalPlayer({
         canInteract = function(entity) return IsEMS() and PedIsDowned(entity) and HasUnlock('full_surgery') end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
-            if srv and FullSurgery then FullSurgery(srv) end
+            if srv and FullSurgery then CreateThread(function() FullSurgery(srv) end) end
         end,
     },
 })
