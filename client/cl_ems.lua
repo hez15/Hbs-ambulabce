@@ -179,7 +179,14 @@ exports.ox_target:addGlobalPlayer({
         label       = 'Treat Wounds',
         icon        = 'fas fa-band-aid',
         distance    = 3.0,
-        canInteract = function(entity) return IsEMS() and not PedIsDowned(entity) end,
+        canInteract = function(entity)
+            if not IsEMS() then return false end
+            local srv = PedToServerId(entity)
+            if not srv then return false end
+            -- Only show when the target actually has injuries
+            local injuries = GetStateBagValue('player:' .. srv, SB.Keys.injuries) or {}
+            return next(injuries) ~= nil
+        end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
             if srv then TreatWounds(srv) end

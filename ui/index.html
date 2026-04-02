@@ -15,26 +15,26 @@
 
     <!-- Body diagram — SVG human silhouette -->
     <div id="body-diagram">
-        <svg id="body-svg" viewBox="0 0 80 160" xmlns="http://www.w3.org/2000/svg">
-            <!-- Head -->
-            <ellipse id="bp-head" data-part="head" cx="40" cy="14" rx="13" ry="14"/>
-            <!-- Neck connector -->
-            <rect class="body-connector" x="34" y="27" width="12" height="9" rx="3"/>
-            <!-- Torso (trapezoid: wide at shoulders, narrows to hips) -->
+        <svg id="body-svg" viewBox="0 0 90 190" xmlns="http://www.w3.org/2000/svg">
+            <!-- Head: circle -->
+            <circle id="bp-head" data-part="head" cx="45" cy="16" r="14"/>
+            <!-- Neck connector (visual only) -->
+            <rect class="body-connector" x="39" y="29" width="12" height="11" rx="3"/>
+            <!-- Torso: wide at shoulders, tapers toward waist -->
             <path id="bp-torso" data-part="torso"
-                d="M15,36 L65,36 L62,82 L18,82 Z"/>
+                d="M19,40 L71,40 L65,92 L25,92 Z"/>
             <!-- Left arm (screen-left = player left, mirror view) -->
             <rect id="bp-left_arm" data-part="left_arm"
-                x="2" y="36" width="12" height="44" rx="5"/>
+                x="2" y="40" width="15" height="49" rx="7"/>
             <!-- Right arm -->
             <rect id="bp-right_arm" data-part="right_arm"
-                x="66" y="36" width="12" height="44" rx="5"/>
-            <!-- Left leg -->
-            <rect id="bp-left_leg" data-part="left_leg"
-                x="19" y="83" width="18" height="62" rx="5"/>
+                x="73" y="40" width="15" height="49" rx="7"/>
+            <!-- Left leg — splays slightly outward -->
+            <path id="bp-left_leg" data-part="left_leg"
+                d="M25,94 L45,94 L41,177 Q41,183 36,183 L22,183 Q17,183 17,177 Z"/>
             <!-- Right leg -->
-            <rect id="bp-right_leg" data-part="right_leg"
-                x="43" y="83" width="18" height="62" rx="5"/>
+            <path id="bp-right_leg" data-part="right_leg"
+                d="M65,94 L45,94 L49,177 Q49,183 54,183 L68,183 Q73,183 73,177 Z"/>
         </svg>
     </div>
 
