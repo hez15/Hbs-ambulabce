@@ -56,20 +56,17 @@ end
 -- ── Server-only helpers ────────────────────────────────────────────────────
 
 if IsDuplicityVersion then
+    -- Use job.type == 'ems' to match qbx_ambulancejob's standard approach.
+    -- This works regardless of the exact job name ('ambulance', 'ems', etc.)
+    -- as long as the job is configured with type = 'ems' in qbx_core.
     function Utils.IsEMS(src)
         local Player = exports.qbx_core:GetPlayer(src)
-        return Player and Player.PlayerData.job.name == Config.EmsJob
+        return Player and Player.PlayerData.job.type == 'ems'
     end
 
     function Utils.CountOnlineEMS()
-        local count   = 0
-        local players = exports.qbx_core:GetQBPlayers()
-        for _, player in pairs(players) do
-            if player.PlayerData.job.name == Config.EmsJob then
-                count = count + 1
-            end
-        end
-        return count
+        -- GetDutyCountType returns the count of players on-duty with job type 'ems'
+        return exports.qbx_core:GetDutyCountType('ems')
     end
 
     function Utils.GetCitizenId(src)

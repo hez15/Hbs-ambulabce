@@ -437,11 +437,16 @@ end)
 
 -- ── Admin Commands ────────────────────────────────────────────────────────
 
+-- /revive: console-only admin command (no ace permissions needed).
+-- In-game EMS use the ox_target workflow; this is purely for server console.
 RegisterCommand('revive', function(src, args)
-    if src ~= 0 and not IsPlayerAceAllowed(src, 'hbs_ambulance.admin') then
-        if src ~= 0 then TriggerClientEvent('hbs_ambulance:client:notify', src,
-            { msg = 'No permission.', type = 'error' }) end
-        return
+    if src ~= 0 then
+        -- In-game: only allow EMS job type (no ace needed)
+        if not Utils.IsEMS(src) then
+            TriggerClientEvent('hbs_ambulance:client:notify', src,
+                { msg = 'Only EMS can use this command.', type = 'error' })
+            return
+        end
     end
     local targetId = tonumber(args[1]) or src
     if not GetPlayerPed(targetId) then
@@ -449,15 +454,13 @@ RegisterCommand('revive', function(src, args)
         return
     end
     TriggerEvent('hbs_ambulance:server:performRevive', src, targetId, false)
-    print(string.format('[hbs_ambulance] Admin revived player %d', targetId))
-end, true)
+    if src == 0 then
+        print(string.format('[hbs_ambulance] Console revived player %d', targetId))
+    end
+end, false)
 
 RegisterCommand('setemstier', function(src, args)
-    if src ~= 0 and not IsPlayerAceAllowed(src, 'hbs_ambulance.admin') then
-        if src ~= 0 then TriggerClientEvent('hbs_ambulance:client:notify', src,
-            { msg = 'No permission.', type = 'error' }) end
-        return
-    end
+    if src ~= 0 then return end  -- console only
     local targetId = tonumber(args[1])
     local newTier  = tonumber(args[2])
     if not targetId or not newTier or newTier < 1 or newTier > 5 then
@@ -475,14 +478,10 @@ RegisterCommand('setemstier', function(src, args)
     SB.Set(targetId, 'emsXP',   newXP)
     TriggerClientEvent('hbs_ambulance:client:emsTierUp', targetId, newTier, tierCfg.label)
     print(string.format('[hbs_ambulance] Set %s to tier %d (%s)', cid, newTier, tierCfg.label))
-end, true)
+end, false)
 
 RegisterCommand('setemsxp', function(src, args)
-    if src ~= 0 and not IsPlayerAceAllowed(src, 'hbs_ambulance.admin') then
-        if src ~= 0 then TriggerClientEvent('hbs_ambulance:client:notify', src,
-            { msg = 'No permission.', type = 'error' }) end
-        return
-    end
+    if src ~= 0 then return end  -- console only
     local targetId = tonumber(args[1])
     local amount   = tonumber(args[2])
     if not targetId or not amount then
@@ -499,14 +498,10 @@ RegisterCommand('setemsxp', function(src, args)
     SB.Set(targetId, 'emsXP',   amount)
     TriggerClientEvent('hbs_ambulance:client:emsXPAwarded', targetId, 0, amount)
     print(string.format('[hbs_ambulance] Set %s XP to %d (tier %d)', cid, amount, newTier))
-end, true)
+end, false)
 
 RegisterCommand('resetems', function(src, args)
-    if src ~= 0 and not IsPlayerAceAllowed(src, 'hbs_ambulance.admin') then
-        if src ~= 0 then TriggerClientEvent('hbs_ambulance:client:notify', src,
-            { msg = 'No permission.', type = 'error' }) end
-        return
-    end
+    if src ~= 0 then return end  -- console only
     local targetId = tonumber(args[1])
     if not targetId then
         print('[hbs_ambulance] Usage: /resetems [playerid]')
@@ -523,14 +518,10 @@ RegisterCommand('resetems', function(src, args)
         msg = 'Your EMS research progress has been reset.', type = 'warning'
     })
     print(string.format('[hbs_ambulance] Reset EMS research for %s', cid))
-end, true)
+end, false)
 
 RegisterCommand('viewems', function(src, args)
-    if src ~= 0 and not IsPlayerAceAllowed(src, 'hbs_ambulance.admin') then
-        if src ~= 0 then TriggerClientEvent('hbs_ambulance:client:notify', src,
-            { msg = 'No permission.', type = 'error' }) end
-        return
-    end
+    if src ~= 0 then return end  -- console only
     local targetId = tonumber(args[1])
     if not targetId then
         print('[hbs_ambulance] Usage: /viewems [playerid]')
@@ -544,4 +535,4 @@ RegisterCommand('viewems', function(src, args)
     print(string.format('[hbs_ambulance] EMS Stats for %s:', cid))
     print(string.format('  Tier: %d (%s) | XP: %d', data.tier, tierCfg.label, data.xp))
     print('  Unlocks: ' .. table.concat(data.unlocks, ', '))
-end, true)
+end, false)

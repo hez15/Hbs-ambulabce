@@ -11,7 +11,8 @@ local downedBlips    = {}   -- { [serverId] = blipHandle }
 
 local function IsEMS()
     local pd = exports.qbx_core:GetPlayerData()
-    return pd and pd.job and pd.job.name == Config.EmsJob
+    -- Match qbx_ambulancejob standard: check job type, not job name
+    return pd and pd.job and pd.job.type == 'ems'
 end
 
 local function HasUnlock(ability)
