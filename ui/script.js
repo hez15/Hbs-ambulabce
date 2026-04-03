@@ -185,9 +185,19 @@ function updateTimer(remainingMs) {
 
 function onRespawn() {
     const will = document.getElementById('will-input').value.trim();
+
+    // Hide immediately — don't wait on fetch
+    hideDeathScreen();
+
+    // Notify Lua for server-side respawn logic
     fetch(`https://${_resourceName}/respawn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lastWords: will }),
+    }).catch(() => {
+        // Fetch failed — post a plain window message as fallback
+        window.dispatchEvent(new MessageEvent('message', {
+            data: { action: 'respawnFallback' }
+        }));
     });
 }

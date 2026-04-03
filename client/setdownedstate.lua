@@ -115,6 +115,12 @@ RegisterNuiCallback('respawn', function(data, cb)
     cb('ok')
 end)
 
+-- Fallback if fetch fails — JS dispatches respawnFallback via window.dispatchEvent
+AddEventHandler('__cfx_nui:respawnFallback', function()
+    HideDeathScreen()
+    TriggerServerEvent('hbs_ambulance:server:requestRespawn')
+end)
+
 -- ── Teleport to hospital after server respawn ─────────────────────────────
 
 RegisterNetEvent('hbs_ambulance:client:respawnAt', function(coords)
