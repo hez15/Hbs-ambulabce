@@ -27,7 +27,7 @@ function HBSHasUnlock(ability)
     if not HBSState.emsResearch then return false end
     if HBSUtils.TableContains(HBSState.emsResearch.unlocks, ability) then return true end
     local abCfg = HBSConfig.EMSResearch.abilities[ability]
-    return abCfg and (HBSState.emsResearch.mentorTier or 0) >= abCfg.tier
+    return abCfg and (HBSState.emsResearch.tier or 1) >= abCfg.tier
 end
 
 -- ── Player loaded / unloaded ──────────────────────────────────────────────

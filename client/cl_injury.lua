@@ -44,6 +44,9 @@ end)
 
 -- ── Apply injury effects ──────────────────────────────────────────────────
 
+-- How much of the part's speed penalty to apply per severity (0 = none, 1 = full)
+local SevScale = { scratch = 0.1, minor = 0.35, fracture = 0.70, critical = 1.0 }
+
 local function ApplyInjuryEffects()
     local ped = cache.ped
     local worstSpeed = 1.0
@@ -52,7 +55,12 @@ local function ApplyInjuryEffects()
     for part, sev in pairs(HBSState.injuries) do
         local fx = HBSConfig.InjuryEffects and HBSConfig.InjuryEffects[part]
         if fx then
-            if fx.speedMult and fx.speedMult < worstSpeed then worstSpeed = fx.speedMult end
+            if fx.speedMult then
+                local scale   = SevScale[sev] or 1.0
+                local penalty = (1.0 - fx.speedMult) * scale
+                local scaled  = 1.0 - penalty
+                if scaled < worstSpeed then worstSpeed = scaled end
+            end
             if fx.blurredVision then hasBlur = true end
         end
     end
