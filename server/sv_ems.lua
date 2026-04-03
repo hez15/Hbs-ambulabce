@@ -6,12 +6,9 @@ local function HasUnlock(src, ability)
     if not src or src <= 0 then return false end
     local unlocks = HBS.Get(src, 'emsUnlocks') or {}
     if HBSUtils.TableContains(unlocks, ability) then return true end
-    local mentorTier = HBS.Get(src, 'mentorTier')
-    if mentorTier then
-        local abCfg = HBSConfig.EMSResearch.abilities[ability]
-        if abCfg and abCfg.tier <= mentorTier then return true end
-    end
-    return false
+    local emsTier = HBS.Get(src, 'emsTier') or 1
+    local abCfg = HBSConfig.EMSResearch.abilities[ability]
+    return abCfg ~= nil and emsTier >= abCfg.tier
 end
 
 local function AwardXP(src, amount)
@@ -93,6 +90,19 @@ local function PerformRevive(reviverSrc, targetSrc)
     TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
     TriggerEvent('hbs:server:broadcastDownedBlips')
 end
+
+-- ── Minigame failure penalty ──────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:minigameFailed', function(targetSrc, actionType)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+    local ped = GetPlayerPed(targetSrc)
+    if not ped or ped == 0 then return end
+    local penalty = actionType == 'revive' and 15 or 8
+    local hp = GetEntityHealth(ped)
+    SetEntityHealth(ped, math.max(101, hp - penalty))
+    HBSLog('minigameFailed', ('action=%s target=%s penalty=%d'):format(actionType, tostring(targetSrc), penalty))
+end)
 
 RegisterNetEvent('hbs_ambulance:server:emsRevive', function(targetSrc)
     local src = source
@@ -176,6 +186,10 @@ end)
 RegisterNetEvent('hbs_ambulance:server:administerDetox', function(targetSrc)
     local src = source
     if not HBSUtils.IsEMS(src) then return end
+    if targetSrc == src then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Cannot administer detox to yourself.')
+        return
+    end
     if not HasUnlock(src, 'addiction_therapy') then
         TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires Addiction Therapy unlock.')
         return

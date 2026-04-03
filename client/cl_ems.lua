@@ -21,6 +21,84 @@ local function PedIsDowned(ped)
     return GetStateBagValue('player:' .. srv, HBS.Keys.isDowned) == true
 end
 
+-- ── Minigame ─────────────────────────────────────────────────────────────
+
+local _mgResult  = nil
+local _mgActive  = false
+
+RegisterNuiCallback('minigameResult', function(data, cb)
+    _mgResult = data.success == true
+    _mgActive = false
+    cb('ok')
+end)
+
+-- Runs the NUI precision bar minigame.
+-- E key presses are detected in Lua and forwarded to JS.
+-- Returns true on success, false on failure or timeout.
+local function RunMinigame(theme, difficulty)
+    if _mgActive then return false end
+    _mgResult = nil
+    _mgActive = true
+
+    local diff   = ({ easy = 1, medium = 2, hard = 3 })[difficulty] or 2
+    local rounds = diff
+    local timeoutMs = rounds * 9000 + 2000
+
+    SendNUIMessage({ action = 'startMinigame', theme = theme, difficulty = difficulty, rounds = rounds })
+
+    local deadline = GetGameTimer() + timeoutMs
+    while _mgActive and GetGameTimer() < deadline do
+        Wait(0)
+        if IsControlJustPressed(0, 38) then   -- E / INPUT_PICKUP
+            SendNUIMessage({ action = 'minigamePress' })
+        end
+    end
+
+    if _mgActive then   -- timed out
+        _mgActive = false
+        SendNUIMessage({ action = 'stopMinigame' })
+        return false
+    end
+
+    return _mgResult == true
+end
+
+-- ── Helpers for difficulty by patient injury severity ─────────────────────
+
+local function GetPatientWorstInjury(targetSrc)
+    local injuries = HBS.GetRemote(targetSrc, 'injuries') or {}
+    local worst = nil
+    if type(injuries) == 'table' then
+        for _, sev in pairs(injuries) do
+            if not worst or (InjuryDefs.Ranks[sev] or 0) > (InjuryDefs.Ranks[worst] or 0) then
+                worst = sev
+            end
+        end
+    end
+    return worst
+end
+
+local function SeverityToDifficulty(sev)
+    if sev == 'critical' then return 'hard'
+    elseif sev == 'fracture' then return 'medium'
+    else return 'easy' end
+end
+
+local function SuggestTriage(targetSrc)
+    local worst = GetPatientWorstInjury(targetSrc)
+    if worst == 'critical' then return 'critical'
+    elseif worst == 'fracture' then return 'moderate'
+    else return 'minor' end
+end
+
+-- ── Play animation helper ─────────────────────────────────────────────────
+
+local function PlayAnim(dict, clip, flag)
+    RequestAnimDict(dict)
+    while not HasAnimDictLoaded(dict) do Wait(10) end
+    TaskPlayAnim(cache.ped, dict, clip, 8.0, -8.0, -1, flag, 0, false, false, false)
+end
+
 -- ── Revive ────────────────────────────────────────────────────────────────
 
 local function Revive(targetSrc)
@@ -31,39 +109,35 @@ local function Revive(targetSrc)
         end
     end
 
-    local reviveTime = HBSHasUnlock('rapid_revive') and math.floor(HBSConfig.ReviveTime * 0.7) or HBSConfig.ReviveTime
+    PlayAnim('missambulance', 'amb_action_treat_b_doctor', 49)
+    local difficulty = HBSHasUnlock('rapid_revive') and 'easy' or 'medium'
+    local success = RunMinigame('defib', difficulty)
+    ClearPedTasks(cache.ped)
 
-    RequestAnimDict('mini@repair')
-    while not HasAnimDictLoaded('mini@repair') do Wait(10) end
-
-    if lib.progressCircle({
-        duration     = reviveTime * 1000,
-        label        = 'Reviving patient...',
-        useWhileDead = false,
-        canCancel    = true,
-        disable      = { move = false, car = false, combat = true },
-        anim         = { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 16 },
-    }) then
+    if success then
         TriggerServerEvent('hbs_ambulance:server:emsRevive', targetSrc)
+    else
+        TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'revive')
+        exports.qbx_core:Notify('Shock failed — poor timing.', 'error')
     end
 end
 
 -- ── Treat wounds ──────────────────────────────────────────────────────────
 
 local function TreatWounds(targetSrc)
-    RequestAnimDict('mini@repair')
-    while not HasAnimDictLoaded('mini@repair') do Wait(10) end
+    local worst = GetPatientWorstInjury(targetSrc)
+    local difficulty = SeverityToDifficulty(worst)
 
-    if lib.progressCircle({
-        duration     = HBSConfig.TreatTime * 1000,
-        label        = 'Treating wounds...',
-        useWhileDead = false,
-        canCancel    = true,
-        disable      = { move = false, car = false, combat = true },
-        anim         = { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 16 },
-    }) then
+    PlayAnim('mini@repair', 'fixing_a_ped', 16)
+    local success = RunMinigame('treat', difficulty)
+    ClearPedTasks(cache.ped)
+
+    if success then
         TriggerServerEvent('hbs_ambulance:server:emsTreat', targetSrc)
-        exports.qbx_core:Notify('Wounds treated.', 'success')
+        exports.qbx_core:Notify('Wounds treated successfully.', 'success')
+    else
+        TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'treat')
+        exports.qbx_core:Notify('Treatment failed — patient stressed.', 'error')
     end
 end
 
@@ -194,13 +268,22 @@ exports.ox_target:addGlobalPlayer({
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
             if not srv then return end
+            local suggested = SuggestTriage(srv)
+            local function triageOption(level, label, desc)
+                local isSuggested = suggested == level
+                return {
+                    title       = isSuggested and ('★ ' .. label .. ' (Suggested)') or label,
+                    description = desc,
+                    onSelect    = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, level) end,
+                }
+            end
             lib.registerContext({
                 id      = 'hbs_triage_' .. srv,
                 title   = 'Triage Patient',
                 options = {
-                    { title = 'Critical', onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'critical') end },
-                    { title = 'Moderate', onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'moderate') end },
-                    { title = 'Minor',    onSelect = function() TriggerServerEvent('hbs_ambulance:server:triagePatient', srv, 'minor')    end },
+                    triageOption('critical', 'Critical', 'Life-threatening injuries'),
+                    triageOption('moderate', 'Moderate', 'Serious but stable'),
+                    triageOption('minor',    'Minor',    'Non-life-threatening'),
                 },
             })
             lib.showContext('hbs_triage_' .. srv)
@@ -215,16 +298,13 @@ exports.ox_target:addGlobalPlayer({
             local srv = PedToServerId(data.entity)
             if not srv then return end
             CreateThread(function()
-                local completed = lib.progressCircle({
-                    duration     = 10000,
-                    label        = 'Administering Detox...',
-                    useWhileDead = false,
-                    canCancel    = true,
-                    disable      = { move = false, car = true, combat = true },
-                    anim         = { dict = 'mp_suicide', clip = 'pill', flag = 49 },
-                })
-                if completed then
+                PlayAnim('mp_suicide', 'pill', 49)
+                local success = RunMinigame('detox', 'medium')
+                ClearPedTasks(cache.ped)
+                if success then
                     TriggerServerEvent('hbs_ambulance:server:administerDetox', srv)
+                else
+                    exports.qbx_core:Notify('Injection failed — imprecise dosage.', 'error')
                 end
             end)
         end,
@@ -238,16 +318,13 @@ exports.ox_target:addGlobalPlayer({
             local srv = PedToServerId(data.entity)
             if not srv then return end
             CreateThread(function()
-                local completed = lib.progressCircle({
-                    duration     = 25000,
-                    label        = 'Full Detox Treatment...',
-                    useWhileDead = false,
-                    canCancel    = true,
-                    disable      = { move = true, car = true, combat = true },
-                    anim         = { dict = 'mini@crate_search@std@ps', clip = 'crate_search_ps_std', flag = 49 },
-                })
-                if completed then
+                PlayAnim('mini@crate_search@std@ps', 'crate_search_ps_std', 49)
+                local success = RunMinigame('detox', 'hard')
+                ClearPedTasks(cache.ped)
+                if success then
                     TriggerServerEvent('hbs_ambulance:server:fullDetox', srv)
+                else
+                    exports.qbx_core:Notify('Full detox failed — procedure aborted.', 'error')
                 end
             end)
         end,

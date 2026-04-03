@@ -18,6 +18,9 @@ window.addEventListener('message', function (e) {
         case 'updateStress':   updateStress(data.value);              break;
         case 'updateAddiction':updateAddiction(data.value);           break;
         case 'updateInjuries': updateInjuries(data.injuries);         break;
+        case 'startMinigame': startMinigame(data);        break;
+        case 'minigamePress': minigamePress();             break;
+        case 'stopMinigame':  stopMinigame(false);         break;
         case 'updateHud':
             if (data.health    !== undefined) updateHealth(data.health);
             if (data.stress    !== undefined) updateStress(data.stress);
@@ -44,6 +47,128 @@ function showHUD() {
 
 function hideHUD() {
     document.getElementById('medical-hud').classList.add('hidden');
+}
+
+// ── Medical Minigame ──────────────────────────────────────────────────────────
+
+const MG_THEMES = {
+    defib:   { color: '#e03030', icon: '⚡', label: 'Defibrillator'    },
+    treat:   { color: '#22c55e', icon: '🩹', label: 'Treating Wounds'  },
+    detox:   { color: '#7c3aed', icon: '💉', label: 'Administer Detox' },
+    surgery: { color: '#0ea5e9', icon: '🔬', label: 'Surgery'          },
+};
+
+const MG_DIFF = {
+    easy:   { speed: 48,  zoneSize: 30, rounds: 1 },
+    medium: { speed: 78,  zoneSize: 20, rounds: 2 },
+    hard:   { speed: 110, zoneSize: 13, rounds: 3 },
+};
+
+let mg = null;  // active minigame state
+let mgRaf = null;
+
+function startMinigame(cfg) {
+    const diff   = MG_DIFF[cfg.difficulty] || MG_DIFF.medium;
+    const theme  = MG_THEMES[cfg.theme]    || MG_THEMES.treat;
+    const rounds = cfg.rounds || diff.rounds;
+
+    mg = {
+        theme, diff,
+        rounds, current: 0, results: [],
+        cursor: 0, dir: 1,
+        zoneStart: randomZone(diff.zoneSize),
+        lastTs: null,
+    };
+
+    // Apply theme
+    const el = document.getElementById('minigame');
+    el.style.setProperty('--mg-color', theme.color);
+    document.getElementById('mg-icon').textContent  = theme.icon;
+    document.getElementById('mg-label').textContent = theme.label;
+    document.getElementById('mg-zone').style.borderColor =
+        hexToRgba(theme.color, 0.65);
+    document.getElementById('mg-zone').style.background =
+        hexToRgba(theme.color, 0.22);
+    document.getElementById('mg-cursor').style.background = '#ffffff';
+    document.getElementById('mg-cursor').style.boxShadow  = '0 0 6px rgba(255,255,255,0.8)';
+    document.getElementById('mg-cursor').className = '';
+
+    applyZone();
+    updateRoundCounter();
+    el.classList.remove('hidden');
+
+    if (mgRaf) cancelAnimationFrame(mgRaf);
+    mgRaf = requestAnimationFrame(mgTick);
+}
+
+function mgTick(ts) {
+    if (!mg) return;
+    const delta = mg.lastTs ? (ts - mg.lastTs) / 1000 : 0;
+    mg.lastTs = ts;
+
+    mg.cursor += mg.dir * mg.diff.speed * delta;
+    if (mg.cursor >= 100) { mg.cursor = 100; mg.dir = -1; }
+    if (mg.cursor <= 0)   { mg.cursor = 0;   mg.dir =  1; }
+
+    document.getElementById('mg-cursor').style.left = mg.cursor + '%';
+    mgRaf = requestAnimationFrame(mgTick);
+}
+
+function minigamePress() {
+    if (!mg) return;
+    const pos = mg.cursor;
+    const hit = pos >= mg.zoneStart && pos <= (mg.zoneStart + mg.diff.zoneSize);
+
+    const cursor = document.getElementById('mg-cursor');
+    cursor.className = hit ? 'hit' : 'miss';
+    setTimeout(() => { cursor.className = ''; cursor.style.background = '#ffffff'; }, 280);
+
+    mg.results.push(hit);
+    mg.current++;
+
+    if (mg.current >= mg.rounds) {
+        const allGood = mg.results.every(Boolean);
+        setTimeout(() => stopMinigame(allGood), 320);
+    } else {
+        mg.zoneStart = randomZone(mg.diff.zoneSize);
+        applyZone();
+        updateRoundCounter();
+    }
+}
+
+function stopMinigame(success) {
+    if (!mg) return;
+    cancelAnimationFrame(mgRaf);
+    document.getElementById('minigame').classList.add('hidden');
+    mg = null;
+
+    fetch(`https://${_resourceName}/minigameResult`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: success === true }),
+    }).catch(() => {});
+}
+
+function applyZone() {
+    const zone = document.getElementById('mg-zone');
+    zone.style.left  = mg.zoneStart + '%';
+    zone.style.width = mg.diff.zoneSize + '%';
+}
+
+function updateRoundCounter() {
+    document.getElementById('mg-round-cur').textContent = mg.current + 1;
+    document.getElementById('mg-round-max').textContent = mg.rounds;
+}
+
+function randomZone(size) {
+    return 8 + Math.random() * (84 - size);
+}
+
+function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
 }
 
 // ── Health bar ────────────────────────────────────────────────────────────────
