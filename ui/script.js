@@ -10,8 +10,10 @@ window.addEventListener('message', function (e) {
     if (!data || !data.action) return;
 
     switch (data.action) {
-        case 'showHUD':        showHUD();                              break;
-        case 'hideHUD':        hideHUD();                             break;
+        case 'showHUD':
+        case 'showHud':        showHUD();                              break;
+        case 'hideHUD':
+        case 'hideHud':        hideHUD();                             break;
         case 'updateHealth':   updateHealth(data.value);              break;
         case 'updateStress':   updateStress(data.value);              break;
         case 'updateAddiction':updateAddiction(data.value);           break;
