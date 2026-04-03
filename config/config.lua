@@ -277,3 +277,11 @@ HBSConfig.CraftingTable = {
     label    = 'Medical Crafting Table',
     radius   = 1.5,
 }
+
+-- Research terminal location (ox_target zone at EMS base)
+-- This is where EMS view their tier, XP progress, and unlocked abilities
+HBSConfig.ResearchTerminal = {
+    coords   = vector3(295.2, -582.8, 43.3), -- Adjust to your server
+    label    = 'EMS Research Terminal',
+    radius   = 1.2,
+}

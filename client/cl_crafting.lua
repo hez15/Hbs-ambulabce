@@ -124,6 +124,104 @@ CreateThread(function()
     })
 end)
 
+-- ── Research terminal ox_target ──────────────────────────────────────────────
+
+local function OpenResearchMenu()
+    if not HBSIsEMS() then
+        HBSNotify('error', 'EMS only.')
+        return
+    end
+
+    local tier    = HBSState.emsTier or 1
+    local xp      = HBSState.emsXP   or 0
+    local tierCfg = HBSConfig.EMSResearch.tiers[tier]
+    local nextCfg = HBSConfig.EMSResearch.tiers[tier + 1]
+
+    local xpLine = nextCfg
+        and ('XP: %d / %d → %s'):format(xp, nextCfg.xpRequired, nextCfg.label)
+        or  ('XP: %d  (Max Tier)'):format(xp)
+
+    -- Build ability list showing locked/unlocked per tier
+    local abilityOptions = {}
+    for abilityId, ab in pairs(HBSConfig.EMSResearch.abilities) do
+        local unlocked = tier >= ab.tier
+        abilityOptions[#abilityOptions + 1] = {
+            title       = ab.label,
+            description = ab.desc,
+            disabled    = true, -- read-only display
+            metadata    = {
+                { label = 'Tier Required', value = ab.tier },
+                { label = 'Status',        value = unlocked and 'Unlocked' or 'Locked' },
+            },
+        }
+    end
+
+    table.sort(abilityOptions, function(a, b)
+        local aLocked = a.metadata[2].value == 'Locked'
+        local bLocked = b.metadata[2].value == 'Locked'
+        if aLocked == bLocked then return (a.metadata[1].value or 0) < (b.metadata[1].value or 0) end
+        return not aLocked
+    end)
+
+    lib.registerContext({
+        id      = 'hbs_research_menu',
+        title   = ('EMS Research — %s'):format(tierCfg and tierCfg.label or 'EMT'),
+        menu    = nil,
+        options = {
+            {
+                title       = xpLine,
+                description = 'Your current research progress',
+                disabled    = true,
+            },
+            {
+                title    = 'View Abilities',
+                icon     = 'fa-solid fa-flask',
+                onSelect = function()
+                    lib.registerContext({
+                        id      = 'hbs_research_abilities',
+                        title   = 'Research Abilities',
+                        menu    = 'hbs_research_menu',
+                        options = abilityOptions,
+                    })
+                    lib.showContext('hbs_research_abilities')
+                end,
+            },
+            {
+                title    = 'Open Crafting Table',
+                icon     = 'fa-solid fa-syringe',
+                onSelect = function()
+                    CreateThread(OpenCraftingMenu)
+                end,
+            },
+        },
+    })
+    lib.showContext('hbs_research_menu')
+end
+
+CreateThread(function()
+    Wait(5000)
+    if not HBSConfig.ResearchTerminal then return end
+
+    exports.ox_target:addSphereZone({
+        coords  = HBSConfig.ResearchTerminal.coords,
+        radius  = HBSConfig.ResearchTerminal.radius,
+        options = {
+            {
+                name     = 'hbs_research_terminal',
+                icon     = 'fa-solid fa-computer',
+                label    = HBSConfig.ResearchTerminal.label,
+                onSelect = function()
+                    if HBSIsEMS() then
+                        OpenResearchMenu()
+                    else
+                        HBSNotify('error', 'EMS only.')
+                    end
+                end,
+            },
+        },
+    })
+end)
+
 -- ── Server response ───────────────────────────────────────────────────────────
 
 RegisterNetEvent('hbs_ambulance:client:craftResult', function(success, itemLabel, reason)
