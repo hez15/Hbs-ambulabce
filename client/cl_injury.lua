@@ -21,7 +21,7 @@ CreateThread(function()
             local dmg = lastHealth - health
             if dmg >= 1 then
                 local boneHit = GetPedLastDamageBone(ped)
-                ClearEntityLastDamageBone(ped)
+                ClearPedLastDamageBone(ped)
                 local part    = InjuryDefs.BoneToBodyPart(boneHit)
                 local sev     = InjuryDefs.DamageToSeverity(dmg)
 
