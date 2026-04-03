@@ -1,6 +1,6 @@
 return {
     doctorCallCooldown = 1, -- Time in minutes for cooldown between doctors calls
-    wipeInvOnRespawn = true, -- Enable to disable removing all items from player on respawn
+    wipeInvOnRespawn = false, -- Set true to wipe player inventory on hospital respawn
     depositSociety = function(society, amount)
         -- Adjust this to your banking resource.
         -- Renewed-Banking:

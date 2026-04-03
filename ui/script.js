@@ -12,9 +12,18 @@ window.addEventListener('message', function (e) {
     switch (data.action) {
         case 'showHUD':        showHUD();                              break;
         case 'hideHUD':        hideHUD();                             break;
+        case 'updateHealth':   updateHealth(data.value);              break;
         case 'updateStress':   updateStress(data.value);              break;
         case 'updateAddiction':updateAddiction(data.value);           break;
-        case 'updateInjuries': updateInjuries(data.injuries);        break;
+        case 'updateInjuries': updateInjuries(data.injuries);         break;
+        case 'updateHud':
+            if (data.health    !== undefined) updateHealth(data.health);
+            if (data.stress    !== undefined) updateStress(data.stress);
+            if (data.addiction !== undefined) updateAddiction(data.addiction);
+            if (data.injuries  !== undefined) updateInjuries(data.injuries);
+            if (data.inPain    !== undefined) setIcon('pain', data.inPain);
+            if (data.bloodloss !== undefined) setIcon('bloodloss', data.bloodloss);
+            break;
         case 'withdrawalActive': setIcon('withdrawal', true);           break;
         case 'withdrawalEnded':  setIcon('withdrawal', false);          break;
         case 'showDeathScreen':showDeathScreen(data.bleedoutMs, data.resourceName); break;
@@ -33,6 +42,20 @@ function showHUD() {
 
 function hideHUD() {
     document.getElementById('medical-hud').classList.add('hidden');
+}
+
+// ── Health bar ────────────────────────────────────────────────────────────────
+
+function updateHealth(value) {
+    const clamped = Math.max(0, Math.min(100, value));
+    const fill = document.getElementById('health-fill');
+    fill.style.width = clamped + '%';
+    document.getElementById('health-val').textContent = Math.round(clamped);
+    if (clamped <= 25) {
+        fill.classList.add('low');
+    } else {
+        fill.classList.remove('low');
+    }
 }
 
 // ── Stress bar ────────────────────────────────────────────────────────────────

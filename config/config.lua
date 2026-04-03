@@ -35,8 +35,8 @@ HBSConfig.InjuryEffects = {
 
 HBSConfig.ReviveTime  = 8
 HBSConfig.TreatTime   = 5
-HBSConfig.ReviveRequiresItem = false
-HBSConfig.ReviveItem         = 'firstaid'
+HBSConfig.ReviveRequiresItem = true
+HBSConfig.ReviveItem         = 'defibrillator'
 
 HBSConfig.DispatchCooldown = 30
 HBSConfig.MinEmsOnline = 1

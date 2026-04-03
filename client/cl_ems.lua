@@ -166,6 +166,17 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        label       = 'Examine Patient',
+        icon        = 'fas fa-stethoscope',
+        distance    = 2.5,
+        canInteract = function() return HBSIsEMS() and HBSHasUnlock('patient_examine') end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            TriggerServerEvent('hbs_ambulance:server:examinePlayer', srv)
+        end,
+    },
+    {
         label       = 'Carry Patient',
         icon        = 'fas fa-hands-holding',
         distance    = 3.0,
@@ -261,6 +272,70 @@ RegisterNetEvent('hbs_ambulance:client:updateDownedBlips', function(list)
         EndTextCommandSetBlipName(blip)
         downedBlips[entry.src] = blip
     end
+end)
+
+-- ── Examine result display ────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:client:examineResult', function(result)
+    local sevLabels = { scratch = 'Scratch', minor = 'Minor', fracture = 'Fracture', critical = 'Critical' }
+    local addLabels = HBSConfig.Addiction.levelLabels
+
+    -- Build injury rows
+    local injuryRows = {}
+    local hasInjuries = false
+    for part, sev in pairs(result.injuries or {}) do
+        hasInjuries = true
+        injuryRows[#injuryRows + 1] = {
+            title    = part:gsub('_', ' '):gsub('^%l', string.upper),
+            description = sevLabels[sev] or sev,
+            disabled = true,
+        }
+    end
+    if not hasInjuries then
+        injuryRows[1] = { title = 'No injuries detected', disabled = true }
+    end
+
+    -- Build addiction rows
+    local addRows = {}
+    local hasAddiction = false
+    for substance, level in pairs(result.addiction or {}) do
+        if level > 0 then
+            hasAddiction = true
+            addRows[#addRows + 1] = {
+                title       = substance:gsub('^%l', string.upper),
+                description = addLabels[level] or tostring(level),
+                disabled    = true,
+            }
+        end
+    end
+    if not hasAddiction then
+        addRows[1] = { title = 'No substance dependency', disabled = true }
+    end
+
+    lib.registerContext({
+        id      = 'hbs_examine_result',
+        title   = ('Patient: %s'):format(result.playerName or 'Unknown'),
+        options = {
+            { title = ('Stress Level: %d%%'):format(result.stress or 0), disabled = true },
+            {
+                title    = 'Injuries',
+                icon     = 'fas fa-bone',
+                onSelect = function()
+                    lib.registerContext({ id = 'hbs_examine_injuries', title = 'Injuries', menu = 'hbs_examine_result', options = injuryRows })
+                    lib.showContext('hbs_examine_injuries')
+                end,
+            },
+            {
+                title    = 'Substance Dependency',
+                icon     = 'fas fa-pills',
+                onSelect = function()
+                    lib.registerContext({ id = 'hbs_examine_addiction', title = 'Substance Dependency', menu = 'hbs_examine_result', options = addRows })
+                    lib.showContext('hbs_examine_addiction')
+                end,
+            },
+        },
+    })
+    lib.showContext('hbs_examine_result')
 end)
 
 -- ── EMS XP / research state sync ─────────────────────────────────────────

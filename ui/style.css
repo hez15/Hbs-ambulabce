@@ -115,6 +115,15 @@ body {
     transition: width 0.5s ease;
 }
 
+.health-fill {
+    background: linear-gradient(90deg, #22c55e, #86efac);
+    transition: width 0.5s ease, background 0.5s ease;
+}
+
+.health-fill.low {
+    background: linear-gradient(90deg, #e03030, #f87171);
+}
+
 .stress-fill {
     background: linear-gradient(90deg, #f0a500, #e03030);
 }
@@ -158,8 +167,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.72);
-    backdrop-filter: blur(3px);
+    background: rgba(0, 0, 0, 0.30);
+    backdrop-filter: blur(2px);
     z-index: 9999;
     animation: fadeIn 0.4s ease;
 }

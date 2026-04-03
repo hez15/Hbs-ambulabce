@@ -69,9 +69,8 @@ AddEventHandler('qbx_core:playerUnloaded',          OnPlayerUnloaded)
 
 -- ── Generic notify from server ────────────────────────────────────────────
 
-RegisterNetEvent('hbs_ambulance:client:notify', function(data)
-    if not data then return end
-    exports.qbx_core:Notify(data.msg, data.type or 'inform', 5000)
+RegisterNetEvent('hbs_ambulance:client:notify', function(ntype, msg)
+    exports.qbx_core:Notify(msg or ntype, type(ntype) == 'string' and ntype or 'inform', 5000)
 end)
 
 function IsHBSLoaded() return HBSState.loaded end

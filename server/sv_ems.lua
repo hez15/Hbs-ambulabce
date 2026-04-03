@@ -32,11 +32,32 @@ local function AwardXP(src, amount)
     HBS.Set(src, 'emsXP',   newXP)
     TriggerClientEvent('hbs_ambulance:client:emsResearchUpdate', src,
         { tier = newTier, xp = newXP, unlocks = data.unlocks })
+
+    -- Notify player of XP gain and tier-up
+    local tierLabel = HBSConfig.EMSResearch.tiers[newTier] and HBSConfig.EMSResearch.tiers[newTier].label or 'EMT'
+    TriggerClientEvent('hbs_ambulance:client:notify', src, 'success', ('+%d XP  |  %s'):format(amount, tierLabel))
+    if newTier > data.tier then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'success', ('Tier up! You are now a %s'):format(tierLabel))
+    end
 end
 
 -- ── Revive ────────────────────────────────────────────────────────────────
 
 local function PerformRevive(reviverSrc, targetSrc)
+    -- Validate revive item before doing anything
+    if reviverSrc and reviverSrc > 0 and HBSConfig.ReviveRequiresItem then
+        local hasUnlock = HasUnlock(reviverSrc, 'hands_only_revive')
+        if not hasUnlock then
+            local count = exports.ox_inventory:GetItemCount(reviverSrc, HBSConfig.ReviveItem)
+            if count < 1 then
+                TriggerClientEvent('hbs_ambulance:client:notify', reviverSrc, 'error',
+                    ('Requires %s to revive.'):format(HBSConfig.ReviveItem))
+                return
+            end
+            exports.ox_inventory:RemoveItem(reviverSrc, HBSConfig.ReviveItem, 1)
+        end
+    end
+
     local cid = HBSUtils.GetCitizenId(targetSrc)
     if not cid then return end
 
@@ -46,9 +67,8 @@ local function PerformRevive(reviverSrc, targetSrc)
     DB.ClearInjuries(cid)
     HBS.Set(targetSrc, 'injuries', {})
 
-    if reviverSrc and reviverSrc > 0 and HBSConfig.ReviveRequiresItem then
-        exports.ox_inventory:RemoveItem(reviverSrc, HBSConfig.ReviveItem, 1)
-    end
+    -- Push injury clear to target client immediately (net event, not local)
+    TriggerClientEvent('hbs_ambulance:client:clearInjuries', targetSrc)
 
     -- Adrenaline unlock
     if HasUnlock(reviverSrc, 'adrenaline_revive') then
@@ -113,6 +133,31 @@ RegisterNetEvent('hbs_ambulance:server:emsTreat', function(targetSrc)
     HBS.Set(targetSrc, 'injuries', updated)
     TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
+end)
+
+-- ── Examine patient (Tier 2 unlock) ──────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:examinePlayer', function(targetSrc)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+    if not HasUnlock(src, 'patient_examine') then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires Patient Examination unlock.')
+        return
+    end
+
+    local cid = HBSUtils.GetCitizenId(targetSrc)
+    if not cid then return end
+
+    local injuries  = DB.LoadInjuries(cid)
+    local stress    = DB.LoadStress(cid)
+    local addiction = DB.LoadAddiction(cid)
+
+    TriggerClientEvent('hbs_ambulance:client:examineResult', src, {
+        playerName = GetPlayerName(targetSrc),
+        injuries   = injuries,
+        stress     = stress,
+        addiction  = addiction,
+    })
 end)
 
 -- ── Addiction therapy (Tier 3 unlock) ────────────────────────────────────────
