@@ -36,7 +36,6 @@ local function OnPlayerLoaded()
     HBSState.loaded = true
 
     SetEntityInvincible(cache.ped, false)
-    SetPlayerSuffersCriticalHits(PlayerId(), false)
 
     lib.callback.await('hbs_ambulance:server:getPlayerState', false, function(data)
         if not data then return end
