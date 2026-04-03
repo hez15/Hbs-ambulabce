@@ -1,5 +1,8 @@
 'use strict';
 
+// Resource name set by Lua via 'init' message — used for NUI callbacks
+let _resourceName = 'hbs-ambulabce';
+
 // ── NUI message router ────────────────────────────────────────────────────────
 
 window.addEventListener('message', function (e) {
@@ -7,6 +10,7 @@ window.addEventListener('message', function (e) {
     if (!data || !data.action) return;
 
     switch (data.action) {
+        case 'init':           _resourceName = data.resourceName || _resourceName; break;
         case 'showHUD':        showHUD();                              break;
         case 'hideHUD':        hideHUD();                             break;
         case 'updateStress':   updateStress(data.value);              break;
@@ -173,16 +177,9 @@ function updateTimer(remainingMs) {
 
 function onRespawn() {
     const will = document.getElementById('will-input').value.trim();
-    fetch(`https://${GetParentResourceName()}/respawn`, {
+    fetch(`https://${_resourceName}/respawn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lastWords: will }),
-    }).catch(() => {
-        // fallback for older FiveM builds without GetParentResourceName
-        fetch('https://hbs-ambulabce/respawn', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lastWords: will }),
-        });
     });
 }

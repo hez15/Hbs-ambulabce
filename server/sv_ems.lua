@@ -56,6 +56,9 @@ local function PerformRevive(reviverSrc, targetSrc)
         SetEntityHealth(GetPlayerPed(targetSrc), 200)
     end
 
+    -- Tell qbx_medical the player is revived (clears laststand/dead state + animation)
+    TriggerClientEvent('qbx_medical:client:playerRevived', targetSrc)
+    -- Our HBS cleanup (hide death screen, clear injuries HUD)
     TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
     TriggerEvent('hbs:server:broadcastDownedBlips')
 end

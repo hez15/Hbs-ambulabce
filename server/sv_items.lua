@@ -19,6 +19,7 @@ RegisterNetEvent('hbs_ambulance:server:itemRevive', function(itemName, targetSrc
     DB.ClearInjuries(cid)
     HBS.Set(targetSrc, 'injuries', {})
 
+    TriggerClientEvent('qbx_medical:client:playerRevived', targetSrc)
     TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
     TriggerEvent('hbs:server:broadcastDownedBlips')
 end)
@@ -130,6 +131,7 @@ RegisterNetEvent('hbs_ambulance:server:civilianRevive', function(itemName, targe
     local ped = GetPlayerPed(targetSrc)
     SetEntityHealth(ped, 120) -- ~20 HP above minimum
 
+    TriggerClientEvent('qbx_medical:client:playerRevived', targetSrc)
     TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
     TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'inform',
         'You were revived by a bystander. Seek medical attention.')

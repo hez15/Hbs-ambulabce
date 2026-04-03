@@ -7,6 +7,9 @@ local sharedConfig = require 'config.shared'
 local isShowing   = false
 local doctorCount = 0
 
+-- Send resource name to NUI so fetch() calls use the correct URL
+SendNUIMessage({ action = 'init', resourceName = GetCurrentResourceName() })
+
 -- ── NUI helpers ───────────────────────────────────────────────────────────
 
 local function ShowDeathScreen(canRespawn, timeRemaining)
