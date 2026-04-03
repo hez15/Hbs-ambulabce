@@ -48,21 +48,12 @@ local function ApplyInjuryEffects()
     local ped = cache.ped
     local worstSpeed = 1.0
     local hasBlur    = false
-    local hasSway    = false
 
     for part, sev in pairs(HBSState.injuries) do
-        local fx = HBSConfig.InjuryEffects[part]
+        local fx = HBSConfig.InjuryEffects and HBSConfig.InjuryEffects[part]
         if fx then
             if fx.speedMult and fx.speedMult < worstSpeed then worstSpeed = fx.speedMult end
-            if fx.blurredVision  then hasBlur = true end
-            if fx.weaponSway     then hasSway = true end
-        end
-        -- Critical wound: ongoing health drain via qbx_medical bleed
-        if sev == 'critical' or sev == 'minor' then
-            local rate = HBSConfig.InjurySeverity[sev] and HBSConfig.InjurySeverity[sev].bleedRate or 0
-            if rate > 0 and exports.qbx_medical then
-                exports.qbx_medical:AddBleed(1, rate)
-            end
+            if fx.blurredVision then hasBlur = true end
         end
     end
 
@@ -75,6 +66,33 @@ local function ApplyInjuryEffects()
         ClearTimecycleModifier()
     end
 end
+
+-- ── Bleed drain thread (replaces qbx_medical:AddBleed) ───────────────────
+
+CreateThread(function()
+    while true do
+        Wait(5000)
+        if not IsHBSLoaded() or HBSState.isDowned then goto bleedcontinue end
+
+        local totalDrain = 0
+        for part, sev in pairs(HBSState.injuries) do
+            local cfg = HBSConfig.InjurySeverity and HBSConfig.InjurySeverity[sev]
+            if cfg and cfg.bleedRate and cfg.bleedRate > 0 then
+                totalDrain = totalDrain + cfg.bleedRate
+            end
+        end
+
+        if totalDrain > 0 then
+            local ped = cache.ped
+            local hp  = GetEntityHealth(ped)
+            if hp > 101 then
+                SetEntityHealth(ped, math.max(101, hp - totalDrain))
+            end
+        end
+
+        ::bleedcontinue::
+    end
+end)
 
 AddEventHandler('hbs:client:applyInjuryEffects',                          ApplyInjuryEffects)
 RegisterNetEvent('hbs_ambulance:client:applyInjuryEffects',               ApplyInjuryEffects)
