@@ -1,5 +1,8 @@
 HBSConfig = {}  -- namespace to avoid conflict with qbx config
 
+-- Set true to enable debug prints in server console and client F8
+HBSConfig.Debug = false
+
 -- Body parts matching GTA bone IDs
 HBSConfig.BodyParts = {
     head      = { bone = 31086, label = 'Head' },

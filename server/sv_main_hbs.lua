@@ -59,6 +59,9 @@ lib.callback.register('hbs_ambulance:server:getPlayerState', function(source)
     HBS.Set(src, 'emsXP',      emsResearch.xp)
     HBS.Set(src, 'emsUnlocks', emsResearch.unlocks)
 
+    HBSLog('getPlayerState', ('cid=%s stress=%d tier=%d xp=%d injuries=%d'):format(
+        cid, stress, emsResearch.tier, emsResearch.xp, (function() local n=0; for _ in pairs(injuries) do n=n+1 end; return n end)()))
+
     return {
         injuries    = injuries,
         stress      = stress,
@@ -71,6 +74,47 @@ end)
 
 lib.callback.register('hbs_ambulance:server:getEMSCount', function()
     return HBSUtils.CountOnlineEMS()
+end)
+
+-- ── qbx_medical integration — keep HBS state in sync ─────────────────────
+-- These events come directly from qbx_medical so we don't depend on the
+-- client firing playerDowned. This makes HBS + qbx_medical one unified system.
+
+AddEventHandler('qbx_medical:server:onPlayerLaststand', function()
+    local src = source
+    if DownedPlayers[src] then return end
+    local cid = HBSUtils.GetCitizenId(src)
+    if not cid then return end
+    local coords = GetEntityCoords(GetPlayerPed(src))
+    DownedPlayers[src] = { x = coords.x, y = coords.y, z = coords.z, citizenid = cid }
+    HBS.Set(src, 'isDowned', true)
+    TriggerEvent('hbs:server:broadcastDownedBlips')
+    HBSLog('qbx_medical laststand', ('player %s (%s) → downed'):format(GetPlayerName(src), cid))
+end)
+
+AddEventHandler('qbx_medical:server:playerDied', function()
+    local src = source
+    if DownedPlayers[src] then return end
+    local cid = HBSUtils.GetCitizenId(src)
+    if not cid then return end
+    local coords = GetEntityCoords(GetPlayerPed(src))
+    DownedPlayers[src] = { x = coords.x, y = coords.y, z = coords.z, citizenid = cid }
+    HBS.Set(src, 'isDowned', true)
+    TriggerEvent('hbs:server:broadcastDownedBlips')
+    HBSLog('qbx_medical playerDied', ('player %s (%s) → downed'):format(GetPlayerName(src), cid))
+end)
+
+AddEventHandler('qbx_medical:server:playerRespawned', function()
+    local src = source
+    DownedPlayers[src] = nil
+    HBS.Set(src, 'isDowned', false)
+    HBS.Set(src, 'triage', nil)
+    local cid = HBSUtils.GetCitizenId(src)
+    if cid then DB.ClearInjuries(cid) end
+    HBS.Set(src, 'injuries', {})
+    TriggerEvent('hbs:server:broadcastDownedBlips')
+    TriggerClientEvent('hbs_ambulance:client:clearInjuries', src)
+    HBSLog('qbx_medical playerRespawned', ('player %s cleared'):format(GetPlayerName(src)))
 end)
 
 -- ── Player downed ─────────────────────────────────────────────────────────
@@ -180,7 +224,7 @@ end)
 RegisterCommand('revive', function(src, args)
     -- Console (src=0) or EMS job in-game
     if src ~= 0 and not HBSUtils.IsEMS(src) then
-        TriggerClientEvent('hbs_ambulance:client:notify', src, { msg = 'Only EMS can use this.', type = 'error' })
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Only EMS can use this.')
         return
     end
     local targetId = tonumber(args[1]) or src
@@ -194,7 +238,8 @@ RegisterCommand('revive', function(src, args)
     if cid then DB.ClearInjuries(cid) end
     HBS.Set(targetId, 'injuries', {})
 
+    TriggerClientEvent('qbx_medical:client:playerRevived', targetId)
     TriggerClientEvent('hbs_ambulance:client:revived', targetId)
     TriggerEvent('hbs:server:broadcastDownedBlips')
-    if src == 0 then print('[hbs_ambulance] Console revived player ' .. targetId) end
+    HBSLog('revive command', ('src=%s revived target=%s'):format(tostring(src), tostring(targetId)))
 end, false)

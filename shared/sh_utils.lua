@@ -2,8 +2,17 @@
 
 HBSUtils = {}
 
-function HBSUtils.Debug(...)
-    print('[hbs_ambulance]', ...)
+-- Debug logging — gated by HBSConfig.Debug
+function HBSUtils.Debug(category, ...)
+    if not HBSConfig or not HBSConfig.Debug then return end
+    local args = { ... }
+    for i, v in ipairs(args) do args[i] = tostring(v) end
+    print(('[hbs][%s] %s'):format(category, table.concat(args, ' | ')))
+end
+
+-- Convenience alias used throughout server files
+function HBSLog(...)
+    HBSUtils.Debug('server', ...)
 end
 
 function HBSUtils.TableContains(tbl, val)

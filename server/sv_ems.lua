@@ -17,7 +17,10 @@ end
 local function AwardXP(src, amount)
     if not src or src <= 0 or amount <= 0 then return end
     local cid = HBSUtils.GetCitizenId(src)
-    if not cid then return end
+    if not cid then
+        HBSLog('AwardXP', 'failed - no citizenid for src=' .. tostring(src))
+        return
+    end
     local data   = DB.LoadEMSResearch(cid)
     local newXP  = data.xp + amount
     local newTier = data.tier
@@ -27,13 +30,14 @@ local function AwardXP(src, amount)
         if newXP >= t.xpRequired then newTier = t.tier; break end
     end
 
+    HBSLog('AwardXP', ('cid=%s +%d xp  %d→%d xp  tier %d→%d'):format(cid, amount, data.xp, newXP, data.tier, newTier))
+
     DB.SaveEMSResearch(cid, newTier, newXP, data.unlocks)
     HBS.Set(src, 'emsTier', newTier)
     HBS.Set(src, 'emsXP',   newXP)
     TriggerClientEvent('hbs_ambulance:client:emsResearchUpdate', src,
         { tier = newTier, xp = newXP, unlocks = data.unlocks })
 
-    -- Notify player of XP gain and tier-up
     local tierLabel = HBSConfig.EMSResearch.tiers[newTier] and HBSConfig.EMSResearch.tiers[newTier].label or 'EMT'
     TriggerClientEvent('hbs_ambulance:client:notify', src, 'success', ('+%d XP  |  %s'):format(amount, tierLabel))
     if newTier > data.tier then
@@ -44,11 +48,14 @@ end
 -- ── Revive ────────────────────────────────────────────────────────────────
 
 local function PerformRevive(reviverSrc, targetSrc)
+    HBSLog('PerformRevive', ('reviver=%s target=%s'):format(tostring(reviverSrc), tostring(targetSrc)))
+
     -- Validate revive item before doing anything
     if reviverSrc and reviverSrc > 0 and HBSConfig.ReviveRequiresItem then
         local hasUnlock = HasUnlock(reviverSrc, 'hands_only_revive')
         if not hasUnlock then
             local count = exports.ox_inventory:GetItemCount(reviverSrc, HBSConfig.ReviveItem)
+            HBSLog('PerformRevive', ('item check: %s x%d (needs 1)'):format(HBSConfig.ReviveItem, count))
             if count < 1 then
                 TriggerClientEvent('hbs_ambulance:client:notify', reviverSrc, 'error',
                     ('Requires %s to revive.'):format(HBSConfig.ReviveItem))
@@ -59,7 +66,11 @@ local function PerformRevive(reviverSrc, targetSrc)
     end
 
     local cid = HBSUtils.GetCitizenId(targetSrc)
-    if not cid then return end
+    if not cid then
+        HBSLog('PerformRevive', 'failed - no citizenid for target=' .. tostring(targetSrc))
+        return
+    end
+    HBSLog('PerformRevive', 'clearing injuries and reviving cid=' .. cid)
 
     DownedPlayers[targetSrc] = nil
     HBS.Set(targetSrc, 'isDowned', false)

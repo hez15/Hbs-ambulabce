@@ -39,14 +39,22 @@ local function OnPlayerLoaded()
 
     lib.callback.await('hbs_ambulance:server:getPlayerState', false, function(data)
         if not data then return end
-        HBSState.injuries   = data.injuries  or {}
-        HBSState.stress     = data.stress    or 0
-        HBSState.addiction  = data.addiction or {}
-        HBSState.emsResearch= data.emsResearch or { tier = 1, xp = 0, unlocks = {} }
+        local research = data.emsResearch or { tier = 1, xp = 0, unlocks = {} }
+
+        HBSState.injuries    = data.injuries  or {}
+        HBSState.stress      = data.stress    or 0
+        HBSState.addiction   = data.addiction or {}
+        HBSState.emsResearch = research
+        -- Keep flat fields in sync so crafting/research menus read correctly
+        HBSState.emsTier     = research.tier    or 1
+        HBSState.emsXP       = research.xp      or 0
+        HBSState.emsUnlocks  = research.unlocks or {}
 
         HBS.SetLocal('injuries',  HBSState.injuries)
         HBS.SetLocal('stress',    HBSState.stress)
         HBS.SetLocal('addiction', HBSState.addiction)
+
+        HBSUtils.Debug('client', 'State loaded', 'tier=' .. HBSState.emsTier, 'xp=' .. HBSState.emsXP, 'injuries=' .. tostring(next(HBSState.injuries) ~= nil))
 
         TriggerEvent('hbs:client:stateLoaded')
         TriggerEvent('hbs:client:hudUpdate')
