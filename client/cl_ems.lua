@@ -113,6 +113,39 @@ end
 
 exports.ox_target:addGlobalPlayer({
     {
+        label       = 'Revive with First Aid Kit',
+        icon        = 'fas fa-kit-medical',
+        distance    = 3.0,
+        canInteract = function(entity)
+            if HBSIsEMS() then return false end -- EMS uses the proper revive option
+            if not PedIsDowned(entity) then return false end
+            return exports.ox_inventory:GetItemCount(cache.playerId, 'firstaidkit') >= 1
+        end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            CreateThread(function()
+                local cfg  = HBSConfig.MedicalItems['firstaidkit']
+                local dict = cfg.animation and cfg.animation.dict
+                local clip = cfg.animation and cfg.animation.anim
+                if dict then
+                    RequestAnimDict(dict)
+                    while not HasAnimDictLoaded(dict) do Wait(10) end
+                end
+                if lib.progressCircle({
+                    duration     = (cfg.civilianReviveTime or 20) * 1000,
+                    label        = 'Treating downed player...',
+                    useWhileDead = false,
+                    canCancel    = true,
+                    disable      = { move = true, car = true, combat = true },
+                    anim         = dict and { dict = dict, clip = clip, flag = 49 } or nil,
+                }) then
+                    TriggerServerEvent('hbs_ambulance:server:civilianRevive', 'firstaidkit', srv)
+                end
+            end)
+        end,
+    },
+    {
         label       = 'Revive Patient',
         icon        = 'fas fa-heartbeat',
         distance    = 3.0,

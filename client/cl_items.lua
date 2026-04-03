@@ -83,6 +83,32 @@ local function UseItem(name)
         return
     end
 
+    -- Civilian revive (first aid kit on downed player)
+    if cfg.canCivilianRevive then
+        local targetSrc = FindDownedNearby(3.0)
+        if targetSrc then
+            local dict = cfg.animation and cfg.animation.dict
+            local clip = cfg.animation and cfg.animation.anim
+            if dict then
+                RequestAnimDict(dict)
+                while not HasAnimDictLoaded(dict) do Wait(10) end
+            end
+            if lib.progressCircle({
+                duration     = (cfg.civilianReviveTime or 20) * 1000,
+                label        = 'Treating downed player...',
+                useWhileDead = false,
+                canCancel    = true,
+                disable      = { move = true, car = true, combat = true },
+                anim         = dict and { dict = dict, clip = clip, flag = cfg.animation.flag or 49 } or nil,
+            }) then
+                SetCooldown(name)
+                TriggerServerEvent('hbs_ambulance:server:civilianRevive', name, targetSrc)
+            end
+            return
+        end
+        -- No downed player nearby — fall through to self-heal
+    end
+
     -- Healing items: check matching injury exists
     if cfg.heals and #cfg.heals > 0 then
         local match = false

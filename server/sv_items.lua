@@ -109,6 +109,33 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
     exports.qbx_core:Notify(src, (cfg.label or itemName) .. ' used.', 'success')
 end)
 
+-- ── Civilian revive (first aid kit on downed player) ─────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:civilianRevive', function(itemName, targetSrc)
+    local src = source
+    local cfg = HBSConfig.MedicalItems[itemName]
+    if not cfg or not cfg.canCivilianRevive then return end
+
+    -- Must have the item
+    if exports.ox_inventory:GetItemCount(src, itemName) < 1 then return end
+    exports.ox_inventory:RemoveItem(src, itemName, 1)
+
+    -- Revive the player — keeps injuries (they're still hurt, just conscious)
+    if not DownedPlayers[targetSrc] then return end
+    DownedPlayers[targetSrc] = nil
+    HBS.Set(targetSrc, 'isDowned', false)
+    HBS.Set(targetSrc, 'triage', nil)
+
+    -- Give them low HP — they're up but in bad shape
+    local ped = GetPlayerPed(targetSrc)
+    SetEntityHealth(ped, 120) -- ~20 HP above minimum
+
+    TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
+    TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'inform',
+        'You were revived by a bystander. Seek medical attention.')
+    TriggerEvent('hbs:server:broadcastDownedBlips')
+end)
+
 -- ── Drug use ──────────────────────────────────────────────────────────────────
 
 RegisterNetEvent('hbs_ambulance:server:useDrug', function(drugName)

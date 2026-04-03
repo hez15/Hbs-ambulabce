@@ -112,6 +112,8 @@ HBSConfig.MedicalItems = {
         label = 'First Aid Kit', useTime = 10,
         heals = { 'scratch', 'minor', 'fracture' }, healParts = { 'any' },
         healthRestore = 30,
+        canCivilianRevive = true,   -- civilians can use this on downed players
+        civilianReviveTime = 20,    -- seconds (longer than EMS defibrillator)
         animation = { dict = 'mini@crate_search@std@ps', anim = 'crate_search_ps_std', flag = 49 },
     },
     bloodbag = {
