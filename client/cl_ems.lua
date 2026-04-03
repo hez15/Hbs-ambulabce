@@ -93,10 +93,19 @@ end
 
 -- ── Play animation helper ─────────────────────────────────────────────────
 
-local function PlayAnim(dict, clip, flag)
+local function LoadDict(dict)
     RequestAnimDict(dict)
-    while not HasAnimDictLoaded(dict) do Wait(10) end
-    TaskPlayAnim(cache.ped, dict, clip, 8.0, -8.0, -1, flag, 0, false, false, false)
+    local t = 0
+    while not HasAnimDictLoaded(dict) and t < 30 do Wait(100); t = t + 1 end
+    return HasAnimDictLoaded(dict)
+end
+
+local function PlayAnim(dict, clip, flag, blendIn, blendOut, duration)
+    if not LoadDict(dict) then return end
+    TaskPlayAnim(cache.ped, dict, clip,
+        blendIn or 8.0, blendOut or -8.0,
+        duration or -1, flag, 0,
+        false, false, false)
 end
 
 -- ── Revive ────────────────────────────────────────────────────────────────
@@ -109,7 +118,13 @@ local function Revive(targetSrc)
         end
     end
 
-    PlayAnim('missambulance', 'amb_action_treat_b_doctor', 49)
+    -- Phase 1: assess / prepare pads (~1.2s)
+    PlayAnim('missambulance', 'amb_action_treat_a_doctor', 49)
+    Wait(1200)
+
+    -- Phase 2: deliver shock (loops during minigame)
+    PlayAnim('missambulance', 'amb_action_defib_a_doctor', 49)
+
     local difficulty = HBSHasUnlock('rapid_revive') and 'easy' or 'medium'
     local success = RunMinigame('defib', difficulty)
     ClearPedTasks(cache.ped)

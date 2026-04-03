@@ -105,6 +105,18 @@ RegisterNetEvent('hbs_ambulance:client:revived', function()
     TriggerEvent('hbs:client:clearInjuries')
     TriggerEvent('hbs:client:setStress', 0)
     exports.qbx_core:Notify('You have been revived!', 'success')
+
+    -- Brief disorientation — player staggers for ~3s before regaining full control
+    CreateThread(function()
+        Wait(150)
+        RequestAnimDict('move_m@drunk@a')
+        local t = 0
+        while not HasAnimDictLoaded('move_m@drunk@a') and t < 20 do Wait(100); t = t + 1 end
+        if HasAnimDictLoaded('move_m@drunk@a') then
+            TaskPlayAnim(cache.ped, 'move_m@drunk@a', 'idle',
+                4.0, -4.0, 3000, 49, 0, false, false, false)
+        end
+    end)
 end)
 
 -- ── NUI respawn button ────────────────────────────────────────────────────
