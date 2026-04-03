@@ -69,6 +69,8 @@ end
 
 -- ── Carry ─────────────────────────────────────────────────────────────────
 
+local StopCarry  -- forward declaration so StartCarry's closure can reference it
+
 local function StartCarry(targetSrc, targetPed)
     if carryActive then return end
     carryActive = true
@@ -80,34 +82,32 @@ local function StartCarry(targetSrc, targetPed)
     AttachEntityToEntity(targetPed, myPed, boneIndex, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
 
     TriggerServerEvent('hbs_ambulance:server:setCarried', targetSrc, true)
-    exports.qbx_core:Notify('Now carrying patient. [G] to put down.', 'inform')
+
+    -- Add ox_target option on the carried ped to put them down
+    exports.ox_target:addLocalEntity(targetPed, {
+        {
+            name     = 'hbs_put_down_' .. targetSrc,
+            icon     = 'fa-solid fa-person-walking-arrow-right',
+            label    = 'Put Down Patient',
+            distance = 2.0,
+            onSelect = function()
+                StopCarry()
+            end,
+        },
+    })
 end
 
-local function StopCarry()
+StopCarry = function()
     if not carryActive then return end
-    if carriedPed then DetachEntity(carriedPed, true, true) end
+    if carriedPed then
+        exports.ox_target:removeLocalEntity(carriedPed, { 'hbs_put_down_' .. (carriedSrc or '') })
+        DetachEntity(carriedPed, true, true)
+    end
     TriggerServerEvent('hbs_ambulance:server:setCarried', carriedSrc, false)
     carryActive = false
     carriedPed  = nil
     carriedSrc  = nil
-    exports.qbx_core:Notify('Patient put down.', 'inform')
 end
-
-CreateThread(function()
-    while true do
-        if carryActive then
-            lib.showTextUI('[G] Put Down Patient', { position = 'top-center' })
-            if IsControlJustPressed(0, 47) then
-                lib.hideTextUI()
-                StopCarry()
-            end
-            Wait(0)
-        else
-            lib.hideTextUI()
-            Wait(500)
-        end
-    end
-end)
 
 -- ── ox_target global player options ───────────────────────────────────────
 
