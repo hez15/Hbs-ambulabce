@@ -41,7 +41,7 @@ function DB.LoadAddiction(cid)
     local rows = MySQL.query.await('SELECT substance, level FROM hbs_addiction WHERE citizenid = ?', { cid })
     local result = {}
     for _, row in ipairs(rows or {}) do
-        result[row.substance] = { level = row.level }
+        result[row.substance] = row.level  -- plain number: { morphine = 2 }
     end
     return result
 end

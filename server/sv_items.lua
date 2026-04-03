@@ -80,11 +80,11 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
 
     -- Addiction
     if cfg.addictive and cfg.substance then
-        local addiction = DB.LoadAddiction(cid)
-        local sub = addiction[cfg.substance] or { level = 0 }
-        local chance = cfg.addictChance[sub.level] or 0.05
+        local addiction  = DB.LoadAddiction(cid)
+        local curLevel   = addiction[cfg.substance] or 0
+        local chance     = cfg.addictChance[curLevel] or 0.05
         if math.random() < chance then
-            local newLevel = math.min(4, sub.level + 1)
+            local newLevel = math.min(4, curLevel + 1)
             DB.SaveAddiction(cid, cfg.substance, newLevel)
             TriggerClientEvent('hbs_ambulance:client:addictionUpdate', src, DB.LoadAddiction(cid))
         end
@@ -98,13 +98,51 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
     -- Addiction reduce (methadone)
     if cfg.addictionReduce then
         local addiction = DB.LoadAddiction(cid)
-        for sub, data in pairs(addiction) do
-            if data.level > 0 then
-                DB.SaveAddiction(cid, sub, math.max(0, data.level - (cfg.reduceAmount or 1)))
+        for sub, level in pairs(addiction) do
+            if level > 0 then
+                DB.SaveAddiction(cid, sub, math.max(0, level - (cfg.reduceAmount or 1)))
             end
         end
         TriggerClientEvent('hbs_ambulance:client:addictionUpdate', src, DB.LoadAddiction(cid))
     end
 
     exports.qbx_core:Notify(src, (cfg.label or itemName) .. ' used.', 'success')
+end)
+
+-- ── Drug use ──────────────────────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:useDrug', function(drugName)
+    local src = source
+    local cfg = HBSConfig.Drugs[drugName]
+    if not cfg then return end
+
+    local cid = HBSUtils.GetCitizenId(src)
+    if not cid then return end
+
+    -- Remove item from inventory
+    local hasItem = exports.ox_inventory:GetItemCount(src, drugName) >= 1
+    if not hasItem then return end
+    exports.ox_inventory:RemoveItem(src, drugName, 1)
+
+    -- Stress reduction
+    if cfg.effects and cfg.effects.stressReduce then
+        local stress = DB.LoadStress(cid)
+        DB.SaveStress(cid, math.max(0, stress - cfg.effects.stressReduce))
+        TriggerClientEvent('hbs_ambulance:client:addStress', src, -cfg.effects.stressReduce)
+    end
+
+    -- Addiction roll
+    if cfg.addictive and cfg.substance then
+        local addiction = DB.LoadAddiction(cid)
+        local curLevel  = addiction[cfg.substance] or 0
+        local chance    = cfg.addictChance and cfg.addictChance[curLevel] or 0.10
+        if math.random() < chance then
+            local newLevel = math.min(4, curLevel + 1)
+            DB.SaveAddiction(cid, cfg.substance, newLevel)
+            TriggerClientEvent('hbs_ambulance:client:addictionUpdate', src, DB.LoadAddiction(cid))
+        end
+    end
+
+    -- Tell client to apply high effect
+    TriggerClientEvent('hbs_ambulance:client:drugEffect', src, drugName)
 end)

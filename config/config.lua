@@ -315,3 +315,120 @@ HBSConfig.ResearchTerminal = {
     label    = 'EMS Research Terminal',
     radius   = 1.2,
 }
+
+-- ── Drug Items ────────────────────────────────────────────────────────────────
+-- Drugs plug into the same addiction system as medical items.
+-- Each drug has a timed HIGH (duration seconds) with screen/stat effects,
+-- followed by a COME-DOWN that wears off naturally.
+-- Addiction escalates with repeated use — withdrawal fires via the
+-- standard HBSConfig.Addiction withdrawal tick.
+--
+-- isDrug = true   → handled by the drug effect system, not the medical item system
+-- substance       → key used in hbs_addiction DB table
+-- addictChance    → per-current-level chance to increase addiction on use
+-- duration        → seconds the high lasts
+-- effects table:
+--   speedMult       → sprint speed multiplier while high (>1.0 = faster)
+--   stressReduce    → stress points removed on use
+--   healthRegen     → if true: slowly restores HP while high
+--   screenEffect    → timecycle modifier name applied while high
+--   postFx          → AnimPostFx name played on use (brief visual pop)
+--   paranoia        → if true: random cam shake bursts while high
+--   sedation        → if true: movement slowed during come-down phase
+
+HBSConfig.Drugs = {
+
+    cocaine = {
+        label    = 'Cocaine',
+        useTime  = 2,
+        isDrug   = true,
+        substance = 'cocaine',
+        addictive = true,
+        addictChance = { [0]=0.20, [1]=0.40, [2]=0.60, [3]=0.80, [4]=0.95 },
+        duration = 300, -- 5 minute high
+        comeDown = 120, -- 2 minute come-down (speed reduced)
+        effects = {
+            speedMult    = 1.18,
+            stressReduce = 30,
+            screenEffect = 'drug_driving',
+            postFx       = 'DrugsMichaelAliensFight',
+            paranoia     = true,
+        },
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+
+    meth = {
+        label    = 'Methamphetamine',
+        useTime  = 4,
+        isDrug   = true,
+        substance = 'meth',
+        addictive = true,
+        addictChance = { [0]=0.30, [1]=0.55, [2]=0.75, [3]=0.90, [4]=0.98 },
+        duration = 600, -- 10 minute high
+        comeDown = 300, -- 5 minute come-down
+        effects = {
+            speedMult    = 1.25,
+            stressReduce = 10,
+            healthRegen  = true,  -- slow HP tick while high
+            screenEffect = 'drug_flying_in_sky',
+            postFx       = 'DrugsMichaelAliensFight',
+            paranoia     = true,
+        },
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+
+    heroin = {
+        label    = 'Heroin',
+        useTime  = 5,
+        isDrug   = true,
+        substance = 'heroin',
+        addictive = true,
+        addictChance = { [0]=0.35, [1]=0.60, [2]=0.80, [3]=0.92, [4]=0.99 },
+        duration = 480, -- 8 minute high
+        comeDown = 240, -- 4 minute come-down
+        effects = {
+            speedMult    = 0.85, -- slowed while high
+            stressReduce = 50,
+            painRelief   = true, -- heals scratch/minor injuries on use
+            screenEffect = 'Oxy_overdose',
+            sedation     = true, -- come-down also sedated
+        },
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+
+    weed = {
+        label    = 'Weed',
+        useTime  = 6,
+        isDrug   = true,
+        substance = 'weed',
+        addictive = true,
+        addictChance = { [0]=0.03, [1]=0.08, [2]=0.15, [3]=0.25, [4]=0.40 },
+        duration = 240, -- 4 minute high
+        comeDown = 60,
+        effects = {
+            speedMult    = 0.92,
+            stressReduce = 40,
+            screenEffect = 'drug_wobbly_vision',
+            postFx       = 'Spectator3',
+        },
+        animation = { dict = 'amb@world_human_smoking@male@idle_a', anim = 'idle_a', flag = 49 },
+    },
+
+    ecstasy = {
+        label    = 'Ecstasy',
+        useTime  = 3,
+        isDrug   = true,
+        substance = 'ecstasy',
+        addictive = true,
+        addictChance = { [0]=0.10, [1]=0.25, [2]=0.45, [3]=0.65, [4]=0.85 },
+        duration = 420, -- 7 minute high
+        comeDown = 180, -- 3 minute come-down
+        effects = {
+            speedMult    = 1.10,
+            stressReduce = 60,
+            screenEffect = 'drug_wobbly_vision',
+            postFx       = 'DrugsMichaelAliensFight',
+        },
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+}

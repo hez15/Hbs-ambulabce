@@ -38,6 +38,7 @@ client_scripts {
     'client/cl_addiction.lua',
     'client/cl_ems.lua',
     'client/cl_crafting.lua',
+    'client/cl_drugs.lua',
     -- qbx_ambulancejob original files
     'client/main.lua',
     'client/hospital.lua',

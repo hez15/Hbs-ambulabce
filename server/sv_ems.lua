@@ -133,10 +133,10 @@ RegisterNetEvent('hbs_ambulance:server:administerDetox', function(targetSrc)
     local cid = HBSUtils.GetCitizenId(targetSrc)
     if not cid then return end
 
-    -- Reduce each substance addiction by 1 (min 0)
+    -- Reduce each substance addiction by 1 (min 0) — values are plain numbers
     local addiction = DB.LoadAddiction(cid)
     for substance, level in pairs(addiction) do
-        local newLevel = math.max(0, level - 1)
+        local newLevel = math.max(0, (type(level) == 'number' and level or 0) - 1)
         DB.SaveAddiction(cid, substance, newLevel)
         addiction[substance] = newLevel
     end
