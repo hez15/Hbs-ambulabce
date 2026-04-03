@@ -59,6 +59,7 @@ server_scripts {
     'server/sv_stress.lua',
     'server/sv_addiction.lua',
     'server/sv_crafting.lua',
+    'server/sv_drugscompat.lua',
     -- qbx_ambulancejob original files
     'server/main.lua',
     'server/hospital.lua',
