@@ -10,7 +10,6 @@ window.addEventListener('message', function (e) {
     if (!data || !data.action) return;
 
     switch (data.action) {
-        case 'init':           _resourceName = data.resourceName || _resourceName; break;
         case 'showHUD':        showHUD();                              break;
         case 'hideHUD':        hideHUD();                             break;
         case 'updateStress':   updateStress(data.value);              break;
@@ -18,7 +17,7 @@ window.addEventListener('message', function (e) {
         case 'updateInjuries': updateInjuries(data.injuries);        break;
         case 'withdrawalActive': setIcon('withdrawal', true);           break;
         case 'withdrawalEnded':  setIcon('withdrawal', false);          break;
-        case 'showDeathScreen':showDeathScreen(data.bleedoutMs);      break;
+        case 'showDeathScreen':showDeathScreen(data.bleedoutMs, data.resourceName); break;
         case 'hideDeathScreen':hideDeathScreen();                     break;
         case 'updateTimer':    updateTimer(data.ms);                  break;
         case 'showForceRespawn': showForceRespawn();                  break;
@@ -111,7 +110,8 @@ function setIcon(icon, visible) {
 let bleedoutTimer = null;
 let bleedoutEnd   = null;
 
-function showDeathScreen(bleedoutMs) {
+function showDeathScreen(bleedoutMs, resourceName) {
+    if (resourceName) _resourceName = resourceName;
     const screen = document.getElementById('death-screen');
     screen.classList.remove('hidden');
 

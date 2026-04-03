@@ -7,8 +7,7 @@ local sharedConfig = require 'config.shared'
 local isShowing   = false
 local doctorCount = 0
 
--- Send resource name to NUI so fetch() calls use the correct URL
-SendNUIMessage({ action = 'init', resourceName = GetCurrentResourceName() })
+local _resourceName = GetCurrentResourceName()
 
 -- ── NUI helpers ───────────────────────────────────────────────────────────
 
@@ -19,9 +18,10 @@ local function ShowDeathScreen(canRespawn, timeRemaining)
     HBS.SetLocal('isDowned', true)
 
     SendNUIMessage({
-        action     = 'showDeathScreen',
-        bleedoutMs = (timeRemaining or 300) * 1000,
-        canRespawn = canRespawn == true,
+        action        = 'showDeathScreen',
+        bleedoutMs    = (timeRemaining or 300) * 1000,
+        canRespawn    = canRespawn == true,
+        resourceName  = _resourceName,
     })
     SetNuiFocus(true, true)
 
