@@ -59,17 +59,47 @@ HBSConfig.Stress = {
     },
 }
 
+-- ── Addiction System ──────────────────────────────────────────────────────────
+-- How addiction works:
+--   1. Addictive items (morphine, painkiller) have a per-level chance to
+--      increase addiction when used. Level 0 = no addiction yet.
+--   2. Addiction builds from level 0 → 4 over repeated use.
+--   3. After withdrawalDelay minutes from last use, withdrawal effects fire
+--      every withdrawalTickRate seconds until addiction reaches 0.
+--   4. Players self-treat with methadone (reduces 1 level) or painkiller
+--      (suppresses withdrawal temporarily).
+--   5. EMS can administer detox (Tier 3 unlock) or full detox (Tier 4).
+--
+-- Addictive consumables (defined in MedicalItems below):
+--   • morphine    — high chance, escalates fast, very effective painkiller
+--   • painkiller  — lower chance, slow escalation, also provides withdrawal relief
+--
+-- Treatment consumables:
+--   • methadone   — reduces addiction level by 1, no withdrawal relief of its own
+--   • painkiller  — withdrawal relief only (doesn't reduce addiction level)
+
 HBSConfig.Addiction = {
-    withdrawalDelay    = 30,
-    withdrawalTickRate = 60,
+    withdrawalDelay    = 30,  -- minutes after last use before withdrawal starts
+    withdrawalTickRate = 60,  -- seconds between each withdrawal effect tick
+
     levelLabels = { [0]='None', [1]='Developing', [2]='Moderate', [3]='Severe', [4]='Critical' },
+
+    -- Effects applied each withdrawal tick per level
     effects = {
         [1] = { moodSwing = true },
         [2] = { handTremors = true, speedMult = 0.95 },
         [3] = { handTremors = true, speedMult = 0.90, visualDistortion = true },
         [4] = { handTremors = true, speedMult = 0.80, visualDistortion = true, vomit = true, healthDrain = 0.5 },
     },
-    treatment = { cost = 5000, duration = 30, reduceTo = 1 },
+
+    -- Addiction chance per use at each current level (0–4)
+    -- Format: item name = { [currentLevel] = chance (0.0–1.0) }
+    -- These mirror the per-item addictChance tables in MedicalItems below.
+    -- Defined here for reference — actual values live on each item.
+    chanceReference = {
+        morphine   = { [0]=0.10, [1]=0.25, [2]=0.40, [3]=0.60, [4]=0.80 },
+        painkiller = { [0]=0.05, [1]=0.15, [2]=0.25, [3]=0.40, [4]=0.60 },
+    },
 }
 
 HBSConfig.MedicalItems = {

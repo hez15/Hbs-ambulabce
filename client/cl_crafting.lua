@@ -113,11 +113,12 @@ CreateThread(function()
         radius  = HBSConfig.CraftingTable.radius,
         options = {
             {
-                name   = 'hbs_craft',
-                icon   = 'fa-solid fa-syringe',
-                label  = HBSConfig.CraftingTable.label,
-                onSelect = function()
-                    CreateThread(OpenCraftingMenu)
+                name        = 'hbs_craft',
+                icon        = 'fa-solid fa-syringe',
+                label       = HBSConfig.CraftingTable.label,
+                canInteract = function() return HBSIsEMS() end,
+                onSelect    = function()
+                    OpenCraftingMenu()
                 end,
             },
         },
@@ -207,15 +208,12 @@ CreateThread(function()
         radius  = HBSConfig.ResearchTerminal.radius,
         options = {
             {
-                name     = 'hbs_research_terminal',
-                icon     = 'fa-solid fa-computer',
-                label    = HBSConfig.ResearchTerminal.label,
-                onSelect = function()
-                    if HBSIsEMS() then
-                        OpenResearchMenu()
-                    else
-                        HBSNotify('error', 'EMS only.')
-                    end
+                name        = 'hbs_research_terminal',
+                icon        = 'fa-solid fa-computer',
+                label       = HBSConfig.ResearchTerminal.label,
+                canInteract = function() return HBSIsEMS() end,
+                onSelect    = function()
+                    OpenResearchMenu()
                 end,
             },
         },
