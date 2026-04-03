@@ -121,23 +121,27 @@ RegisterNetEvent('hbs_ambulance:server:requestRespawn', function()
         Player.Functions.RemoveMoney('bank', 2500, 'hospital-respawn')
     end
 
-    -- Find nearest hospital spawn
-    local coords = GetEntityCoords(GetPlayerPed(src))
-    local nearest, bestDist = nil, math.huge
+    -- Find nearest hospital check-in point and teleport there
+    local pedCoords   = GetEntityCoords(GetPlayerPed(src))
     local sharedConfig = require 'config.shared'
-    for _, hospital in pairs(sharedConfig.locations.hospitals) do
-        local hcoords = hospital.coords
-        local d = #(coords - vector3(hcoords.x, hcoords.y, hcoords.z))
-        if d < bestDist then bestDist = d; nearest = hospital end
+    local nearest, bestDist = nil, math.huge
+
+    for _, hospital in pairs(sharedConfig.locations.hospitals or {}) do
+        local checkIn = hospital.checkIn
+        if checkIn then
+            -- checkIn may be a single vec3 or a table of vec3s
+            local points = type(checkIn[1]) == 'table' and checkIn or { checkIn }
+            for _, pt in ipairs(points) do
+                local d = #(pedCoords - vector3(pt.x, pt.y, pt.z))
+                if d < bestDist then bestDist = d; nearest = pt end
+            end
+        end
     end
 
-    if nearest then
-        -- Use qbx_ambulancejob's check-in system (puts player in a bed)
-        local bedIndex = 1  -- first open bed
-        TriggerClientEvent('qbx_ambulancejob:client:checkedIn', src, 'pillbox', bedIndex)
-    else
-        TriggerClientEvent('hbs_ambulance:client:respawnAt', src, { x = 307.5, y = -600.1, z = 43.3, w = 255.0 })
-    end
+    local spawnCoords = nearest
+        or { x = 308.19, y = -595.35, z = 43.29, w = 0.0 } -- Pillbox fallback
+
+    TriggerClientEvent('hbs_ambulance:client:respawnAt', src, spawnCoords)
 
     TriggerEvent('hbs:server:broadcastDownedBlips')
 end)

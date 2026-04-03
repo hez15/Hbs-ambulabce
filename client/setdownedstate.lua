@@ -16,9 +16,9 @@ local function ShowDeathScreen(canRespawn, timeRemaining)
     HBS.SetLocal('isDowned', true)
 
     SendNUIMessage({
-        action        = 'showDeathScreen',
-        timeRemaining = timeRemaining or 300,
-        canRespawn    = canRespawn == true,
+        action     = 'showDeathScreen',
+        bleedoutMs = (timeRemaining or 300) * 1000,
+        canRespawn = canRespawn == true,
     })
     SetNuiFocus(true, true)
 
@@ -28,10 +28,10 @@ local function ShowDeathScreen(canRespawn, timeRemaining)
         while t > 0 and HBSState.isDowned do
             Wait(1000)
             t = t - 1
-            SendNUIMessage({ action = 'updateTimer', timeRemaining = t })
+            SendNUIMessage({ action = 'updateTimer', ms = t * 1000 })
         end
         if HBSState.isDowned then
-            SendNUIMessage({ action = 'forceRespawn' })
+            SendNUIMessage({ action = 'showForceRespawn' })
         end
     end)
 end

@@ -173,9 +173,16 @@ function updateTimer(remainingMs) {
 
 function onRespawn() {
     const will = document.getElementById('will-input').value.trim();
-    fetch('https://hbs_ambulance/respawn', {
+    fetch(`https://${GetParentResourceName()}/respawn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lastWords: will }),
+    }).catch(() => {
+        // fallback for older FiveM builds without GetParentResourceName
+        fetch('https://hbs-ambulabce/respawn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lastWords: will }),
+        });
     });
 }
