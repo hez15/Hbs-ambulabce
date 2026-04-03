@@ -164,6 +164,24 @@ body {
     animation: fadeIn 0.4s ease;
 }
 
+/* Pulsing red vignette overlay */
+#death-screen::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center,
+        transparent 30%,
+        rgba(140, 0, 0, 0.55) 100%);
+    animation: bloodPulse 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes bloodPulse {
+    0%, 100% { opacity: 0.4; }
+    50%       { opacity: 1.0; }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
@@ -280,6 +298,14 @@ body {
 
 .death-btn:active {
     transform: translateY(0);
+}
+
+.death-btn:disabled,
+.death-btn[disabled] {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+    pointer-events: none;
 }
 
 .death-btn.danger {

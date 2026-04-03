@@ -118,6 +118,10 @@ function showDeathScreen(bleedoutMs, resourceName) {
     document.getElementById('force-block').classList.add('hidden');
     document.getElementById('btn-block').classList.remove('hidden');
 
+    // Button locked until timer expires
+    const btn = document.getElementById('btn-respawn');
+    if (btn) btn.disabled = true;
+
     if (bleedoutMs && bleedoutMs > 0) {
         bleedoutEnd = Date.now() + bleedoutMs;
         startTimer();
@@ -132,10 +136,14 @@ function hideDeathScreen() {
 }
 
 function showForceRespawn() {
+    // Hide countdown button block, show force-respawn block with danger button
     document.getElementById('btn-block').classList.add('hidden');
     document.getElementById('force-block').classList.remove('hidden');
     stopTimer();
     document.getElementById('timer-value').textContent = '0:00';
+
+    // Re-enable any button in force-block
+    document.querySelectorAll('#force-block .death-btn').forEach(b => b.disabled = false);
 }
 
 function startTimer() {
