@@ -62,7 +62,7 @@ if eventName then
         end
     end)
 
-    print(('[hbs_ambulance] Drug compat: listening on "%s"'):format(eventName))
+    HBSLog('drugscompat', ('listening on "%s"'):format(eventName))
 else
-    print('[hbs_ambulance] Drug compat: no drugConsumedEvent set — using HBS item system only.')
+    HBSLog('drugscompat', 'no drugConsumedEvent set — using HBS item system only.')
 end

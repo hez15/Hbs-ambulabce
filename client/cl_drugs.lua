@@ -130,6 +130,21 @@ end)
 -- ── Net event: addiction updated from drug use ────────────────────────────────
 -- (handled by existing cl_addiction.lua addictionUpdate event)
 
+-- ── Clear drug state on unload (stops dangling threads) ──────────────────────
+
+AddEventHandler('QBCore:Client:OnPlayerUnloaded', function()
+    activeHigh     = nil
+    activeComeDown = nil
+    ClearHighEffects()
+    ClearComeDownEffects()
+end)
+AddEventHandler('qbx_core:playerUnloaded', function()
+    activeHigh     = nil
+    activeComeDown = nil
+    ClearHighEffects()
+    ClearComeDownEffects()
+end)
+
 -- ── Use drug item event ───────────────────────────────────────────────────────
 
 AddEventHandler('hbs_ambulance:client:useDrug', function(drugName)

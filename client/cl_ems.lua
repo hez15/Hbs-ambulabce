@@ -353,14 +353,16 @@ RegisterNetEvent('hbs_ambulance:client:updateDownedBlips', function(list)
     downedBlips = {}
     if not HBSIsEMS() then return end
 
+    local triageColour = { critical = 1, moderate = 17, minor = 2 }
+
     for _, entry in ipairs(list) do
         local blip = AddBlipForCoord(entry.x, entry.y, entry.z)
         SetBlipSprite(blip, 153)
-        SetBlipColour(blip, entry.triage and HBSConfig.InjurySeverity and 1 or 1)
+        SetBlipColour(blip, entry.triage and (triageColour[entry.triage] or 5) or 5)
         SetBlipScale(blip, 0.8)
         SetBlipAsShortRange(blip, false)
         BeginTextCommandSetBlipName('STRING')
-        AddTextComponentSubstringPlayerName('Downed Player')
+        AddTextComponentSubstringPlayerName(entry.triage and ('Downed — ' .. entry.triage) or 'Downed Player')
         EndTextCommandSetBlipName(blip)
         downedBlips[entry.src] = blip
     end

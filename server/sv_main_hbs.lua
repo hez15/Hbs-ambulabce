@@ -135,7 +135,6 @@ RegisterNetEvent('hbs_ambulance:server:playerDowned', function()
     local last = DispatchCooldowns[src] or 0
     if (now - last) >= (HBSConfig.DispatchCooldown or 30) then
         DispatchCooldowns[src] = now
-        TriggerClientEvent('hbs_ambulance:client:updateDownedBlips', -1, {}) -- trigger refresh
         -- Also use qbx alert
         local msg = string.format('Civilian down at %.0f, %.0f', coords.x, coords.y)
         local players = exports.qbx_core:GetQBPlayers()
