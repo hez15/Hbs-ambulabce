@@ -71,10 +71,12 @@ end
 local function StartHigh(drugName, cfg)
     -- Clear any existing high
     if activeHigh then
+        HBSUtils.Debug('drugs', 'overriding existing high: ' .. activeHigh.substance)
         ClearHighEffects()
     end
 
     activeHigh = { substance = drugName, endTime = GetGameTimer() + (cfg.duration * 1000), cfg = cfg }
+    HBSUtils.Debug('drugs', ('high started: %s duration=%ds'):format(drugName, cfg.duration))
     ApplyHighEffects(cfg)
     HBSNotify('inform', ('You feel the effects of %s.'):format(cfg.label))
 
@@ -99,6 +101,7 @@ local function StartHigh(drugName, cfg)
             Wait(1000)
         end
         -- High ended — start come-down
+        HBSUtils.Debug('drugs', ('high ended: %s'):format(drugName))
         ClearHighEffects()
         activeHigh = nil
 
@@ -109,12 +112,14 @@ local function StartHigh(drugName, cfg)
                 endTime   = GetGameTimer() + (cfg.comeDown * 1000),
                 speedMult = cdSpeed,
             }
+            HBSUtils.Debug('drugs', ('come-down started: %s speedMult=%.2f duration=%ds'):format(drugName, cdSpeed, cfg.comeDown))
             SetRunSprintMultiplierForPlayer(PlayerId(), cdSpeed)
             HBSNotify('error', ('The %s is wearing off.'):format(cfg.label))
 
             Wait(cfg.comeDown * 1000)
             ClearComeDownEffects()
             activeComeDown = nil
+            HBSUtils.Debug('drugs', ('come-down ended: %s'):format(drugName))
         end
     end)
 end
@@ -123,7 +128,11 @@ end
 
 RegisterNetEvent('hbs_ambulance:client:drugEffect', function(drugName)
     local cfg = HBSConfig.Drugs[drugName]
-    if not cfg then return end
+    if not cfg then
+        HBSUtils.Debug('drugs', 'drugEffect received but no config for: ' .. tostring(drugName))
+        return
+    end
+    HBSUtils.Debug('drugs', 'drugEffect received: ' .. drugName)
     CreateThread(function() StartHigh(drugName, cfg) end)
 end)
 

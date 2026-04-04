@@ -46,6 +46,7 @@ local function RunMinigame(theme, difficulty)
     local rounds = diff
     local timeoutMs = rounds * 9000 + 2000
 
+    HBSUtils.Debug('ems', ('minigame start: theme=%s difficulty=%s rounds=%d'):format(theme, difficulty, rounds))
     SendNUIMessage({ action = 'startMinigame', theme = theme, difficulty = difficulty, rounds = rounds })
 
     local deadline = GetGameTimer() + timeoutMs
@@ -59,9 +60,11 @@ local function RunMinigame(theme, difficulty)
     if _mgActive then   -- timed out
         _mgActive = false
         SendNUIMessage({ action = 'stopMinigame' })
+        HBSUtils.Debug('ems', 'minigame timed out')
         return false
     end
 
+    HBSUtils.Debug('ems', 'minigame result: ' .. tostring(_mgResult))
     return _mgResult == true
 end
 
@@ -113,24 +116,29 @@ end
 -- ── Revive ────────────────────────────────────────────────────────────────
 
 local function Revive(targetSrc)
+    HBSUtils.Debug('ems', ('Revive: target=%s handsUnlock=%s requiresItem=%s'):format(
+        tostring(targetSrc), tostring(HBSHasUnlock('hands_only_revive')), tostring(HBSConfig.ReviveRequiresItem)))
+
     if HBSConfig.ReviveRequiresItem and not HBSHasUnlock('hands_only_revive') then
         if exports.ox_inventory:Search('count', HBSConfig.ReviveItem) < 1 then
+            HBSUtils.Debug('ems', 'Revive blocked — missing item: ' .. HBSConfig.ReviveItem)
             exports.qbx_core:Notify('You need a ' .. HBSConfig.ReviveItem .. '.', 'error')
             return
         end
     end
 
-    -- Phase 1: assess / prepare pads (~1.2s)
     -- Hands-only revive cooldown check
     if HBSHasUnlock('hands_only_revive') and not HBSConfig.ReviveRequiresItem then
         local remaining = handsCooldownEnd - GetGameTimer()
         if remaining > 0 then
             local secs = math.ceil(remaining / 1000)
+            HBSUtils.Debug('ems', ('Revive blocked — hands cooldown %ds remaining'):format(secs))
             exports.qbx_core:Notify(('Hands-Only Revive on cooldown — %ds remaining.'):format(secs), 'error')
             return
         end
     end
 
+    -- Phase 1: assess / prepare pads (~1.2s)
     PlayAnim('missambulance', 'amb_action_treat_a_doctor', 49)
     Wait(1200)
 
@@ -138,16 +146,20 @@ local function Revive(targetSrc)
     PlayAnim('missambulance', 'amb_action_defib_a_doctor', 49)
 
     local difficulty = HBSHasUnlock('rapid_revive') and 'easy' or 'medium'
+    HBSUtils.Debug('ems', ('Revive minigame: difficulty=%s rapidRevive=%s'):format(difficulty, tostring(HBSHasUnlock('rapid_revive'))))
     local success = RunMinigame('defib', difficulty)
     ClearPedTasks(cache.ped)
 
     if success then
+        HBSUtils.Debug('ems', 'Revive succeeded for target=' .. tostring(targetSrc))
         -- Track hands-only cooldown if used without item
         if HBSHasUnlock('hands_only_revive') and not HBSConfig.ReviveRequiresItem then
             handsCooldownEnd = GetGameTimer() + HANDS_COOLDOWN
+            HBSUtils.Debug('ems', 'hands-only cooldown set')
         end
         TriggerServerEvent('hbs_ambulance:server:emsRevive', targetSrc)
     else
+        HBSUtils.Debug('ems', 'Revive failed for target=' .. tostring(targetSrc))
         TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'revive')
         exports.qbx_core:Notify('Shock failed — poor timing.', 'error')
     end
@@ -158,15 +170,19 @@ end
 local function TreatWounds(targetSrc)
     local worst = GetPatientWorstInjury(targetSrc)
     local difficulty = SeverityToDifficulty(worst)
+    HBSUtils.Debug('ems', ('TreatWounds: target=%s worstInjury=%s difficulty=%s'):format(
+        tostring(targetSrc), tostring(worst), difficulty))
 
     PlayAnim('mini@repair', 'fixing_a_ped', 16)
     local success = RunMinigame('treat', difficulty)
     ClearPedTasks(cache.ped)
 
     if success then
+        HBSUtils.Debug('ems', 'TreatWounds succeeded for target=' .. tostring(targetSrc))
         TriggerServerEvent('hbs_ambulance:server:emsTreat', targetSrc)
         exports.qbx_core:Notify('Wounds treated successfully.', 'success')
     else
+        HBSUtils.Debug('ems', 'TreatWounds failed for target=' .. tostring(targetSrc))
         TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'treat')
         exports.qbx_core:Notify('Treatment failed — patient stressed.', 'error')
     end
@@ -178,6 +194,7 @@ local StopCarry  -- forward declaration so StartCarry's closure can reference it
 
 local function StartCarry(targetSrc, targetPed)
     if carryActive then return end
+    HBSUtils.Debug('ems', ('StartCarry: target=%s'):format(tostring(targetSrc)))
     carryActive = true
     carriedPed  = targetPed
     carriedSrc  = targetSrc
@@ -204,6 +221,7 @@ end
 
 StopCarry = function()
     if not carryActive then return end
+    HBSUtils.Debug('ems', ('StopCarry: releasing target=%s'):format(tostring(carriedSrc)))
     if carriedPed then
         exports.ox_target:removeLocalEntity(carriedPed, { 'hbs_put_down_' .. (carriedSrc or '') })
         DetachEntity(carriedPed, true, true)
@@ -224,6 +242,7 @@ CreateThread(function()
         if carryActive and carriedSrc and IsPedInAnyVehicle(cache.ped, false) then
             if not transportAwardedFor[carriedSrc] then
                 transportAwardedFor[carriedSrc] = true
+                HBSUtils.Debug('ems', ('transport XP: entered vehicle with patient %s'):format(tostring(carriedSrc)))
                 TriggerServerEvent('hbs_ambulance:server:transportPatient', carriedSrc)
             end
         elseif not carryActive then
@@ -553,4 +572,8 @@ end)
 
 RegisterNetEvent('hbs_ambulance:client:emsResearchUpdate', function(data)
     HBSState.emsResearch = data
+    HBSState.emsTier    = data.tier    or 1
+    HBSState.emsXP      = data.xp      or 0
+    HBSState.emsUnlocks = data.unlocks or {}
+    HBSUtils.Debug('ems', ('research updated: tier=%d xp=%d'):format(HBSState.emsTier, HBSState.emsXP))
 end)

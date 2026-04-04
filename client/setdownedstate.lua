@@ -13,6 +13,8 @@ local _resourceName = GetCurrentResourceName()
 
 local function ShowDeathScreen(canRespawn, timeRemaining)
     if isShowing then return end
+    HBSUtils.Debug('downed', ('ShowDeathScreen: canRespawn=%s timeRemaining=%s'):format(
+        tostring(canRespawn), tostring(timeRemaining)))
     isShowing = true
     HBSState.isDowned = true
     HBS.SetLocal('isDowned', true)
@@ -41,6 +43,7 @@ end
 
 local function HideDeathScreen()
     if not isShowing then return end
+    HBSUtils.Debug('downed', 'HideDeathScreen called')
     isShowing = false
     HBSState.isDowned = false
     HBS.SetLocal('isDowned', false)
@@ -68,12 +71,15 @@ CreateThread(function()
                 if (now - lastDoctorCheck) > 60000 then
                     doctorCount = lib.callback.await('qbx_ambulancejob:server:getNumDoctors')
                     lastDoctorCheck = now
+                    HBSUtils.Debug('downed', ('doctor count refreshed: %d (min=%d)'):format(doctorCount, HBSConfig.MinEmsOnline))
                 end
 
                 local timeLeft = inLaststand
                     and math.ceil(exports.qbx_medical:GetLaststandTime())
                     or  300
 
+                HBSUtils.Debug('downed', ('player downed: isDead=%s inLaststand=%s timeLeft=%d doctorCount=%d'):format(
+                    tostring(isDead), tostring(inLaststand ~= false), timeLeft, doctorCount))
                 ShowDeathScreen(doctorCount < HBSConfig.MinEmsOnline, timeLeft)
                 TriggerServerEvent('hbs_ambulance:server:playerDowned')
             end

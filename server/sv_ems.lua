@@ -5,10 +5,16 @@
 local function HasUnlock(src, ability)
     if not src or src <= 0 then return false end
     local unlocks = HBS.Get(src, 'emsUnlocks') or {}
-    if HBSUtils.TableContains(unlocks, ability) then return true end
+    if HBSUtils.TableContains(unlocks, ability) then
+        HBSLog('HasUnlock', ('src=%s ability=%s → true (explicit unlock)'):format(tostring(src), ability))
+        return true
+    end
     local emsTier = HBS.Get(src, 'emsTier') or 1
     local abCfg = HBSConfig.EMSResearch.abilities[ability]
-    return abCfg ~= nil and emsTier >= abCfg.tier
+    local result = abCfg ~= nil and emsTier >= abCfg.tier
+    HBSLog('HasUnlock', ('src=%s ability=%s tier=%d reqTier=%s → %s'):format(
+        tostring(src), ability, emsTier, abCfg and tostring(abCfg.tier) or 'nil', tostring(result)))
+    return result
 end
 
 local function AwardXP(src, amount)

@@ -15,6 +15,8 @@ local function ApplyAddictionEffects()
     local ped = cache.ped
     local highest = GetHighestAddictionLevel()
 
+    HBSUtils.Debug('addiction', 'tick — highest level=' .. tostring(highest))
+
     if highest == 0 then
         if withdrawalActive then
             withdrawalActive = false
@@ -22,6 +24,7 @@ local function ApplyAddictionEffects()
             SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
             ClearTimecycleModifier()
             SendNUIMessage({ action = 'setIcon', icon = 'withdrawal', visible = false })
+            HBSUtils.Debug('addiction', 'withdrawal cleared — no active addiction')
         end
         return
     end
@@ -61,18 +64,24 @@ local function ApplyAddictionEffects()
     -- Vomit (level 4): play scenario periodically
     if fx.vomit and not vomitCooldown then
         vomitCooldown = true
-        TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_SICK', 0, true)
-        Wait(4000)
-        ClearPedTasks(ped)
-        Wait(120000) -- 2 min cooldown
-        vomitCooldown = false
+        -- Run vomit + cooldown in its own thread so the withdrawal tick isn't blocked
+        CreateThread(function()
+            HBSUtils.Debug('addiction', 'vomit triggered')
+            TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_SICK', 0, true)
+            Wait(4000)
+            ClearPedTasks(ped)
+            Wait(120000) -- 2 min cooldown
+            vomitCooldown = false
+            HBSUtils.Debug('addiction', 'vomit cooldown cleared')
+        end)
     end
 
     if not withdrawalActive then
         withdrawalActive = true
         SendNUIMessage({ action = 'setIcon', icon = 'withdrawal', visible = true })
-        HBSNotify('warning', ('Withdrawal: %s'):format(
-            HBSConfig.Addiction.levelLabels[highest] or 'Unknown'))
+        HBSNotify(('Withdrawal: %s'):format(
+            HBSConfig.Addiction.levelLabels[highest] or 'Unknown'), 'warning')
+        HBSUtils.Debug('addiction', 'withdrawal active, level=' .. tostring(highest))
     end
 end
 
@@ -95,6 +104,7 @@ end)
 RegisterNetEvent('hbs_ambulance:client:addictionUpdate', function(addiction)
     HBSState.addiction = addiction or {}
     HBS.SetLocal('addiction', HBSState.addiction)
+    HBSUtils.Debug('addiction', 'addiction state updated from server')
     TriggerEvent('hbs:client:hudUpdate')
 
     -- If all cleared, reset effects immediately

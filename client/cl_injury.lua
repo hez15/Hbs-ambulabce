@@ -25,6 +25,8 @@ CreateThread(function()
                 local part    = InjuryDefs.BoneToBodyPart(boneHit)
                 local sev     = InjuryDefs.DamageToSeverity(dmg)
 
+                HBSUtils.Debug('injury', ('damage detected: dmg=%d bone=%d part=%s sev=%s'):format(dmg, boneHit, part, sev))
+
                 -- Only upgrade, never downgrade an existing injury
                 local existing = HBSState.injuries[part]
                 if not existing or InjuryDefs.IsWorse(sev, existing) then
@@ -33,6 +35,9 @@ CreateThread(function()
                     TriggerServerEvent('hbs_ambulance:server:saveInjury', part, sev)
                     TriggerEvent('hbs:client:hudUpdate')
                     TriggerEvent('hbs:client:applyInjuryEffects')
+                    HBSUtils.Debug('injury', ('saved injury: %s=%s'):format(part, sev))
+                else
+                    HBSUtils.Debug('injury', ('skipped injury: %s already %s (new %s not worse)'):format(part, existing, sev))
                 end
             end
         end
@@ -65,6 +70,7 @@ local function ApplyInjuryEffects()
         end
     end
 
+    HBSUtils.Debug('injury', ('apply effects: speedMult=%.2f blur=%s'):format(worstSpeed, tostring(hasBlur)))
     SetRunSprintMultiplierForPlayer(PlayerId(), worstSpeed)
 
     if hasBlur then
@@ -95,6 +101,7 @@ CreateThread(function()
             local hp  = GetEntityHealth(ped)
             if hp > 101 then
                 SetEntityHealth(ped, math.max(101, hp - totalDrain))
+                HBSUtils.Debug('injury', ('bleed drain: %d hp removed (total drain %d)'):format(totalDrain, totalDrain))
             end
         end
 
@@ -108,6 +115,7 @@ RegisterNetEvent('hbs_ambulance:client:applyInjuryEffects',               ApplyI
 -- ── Clear injuries (on revive / respawn) ─────────────────────────────────
 
 AddEventHandler('hbs:client:clearInjuries', function()
+    HBSUtils.Debug('injury', 'injuries cleared')
     HBSState.injuries = {}
     HBS.SetLocal('injuries', {})
     SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)

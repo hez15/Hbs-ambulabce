@@ -17,6 +17,9 @@ local function RollAddiction(src, drugKey)
     local curLevel  = addiction[cfg.substance] or 0
     local chance    = cfg.addictChance and cfg.addictChance[curLevel] or 0.10
 
+    HBSLog('drugscompat', ('roll: cid=%s drug=%s substance=%s curLevel=%d chance=%.2f'):format(
+        cid, drugKey, cfg.substance, curLevel, chance))
+
     if math.random() < chance then
         local newLevel = math.min(4, curLevel + 1)
         DB.SaveAddiction(cid, cfg.substance, newLevel)
@@ -24,12 +27,16 @@ local function RollAddiction(src, drugKey)
         HBS.Set(src, 'addiction', updated)
         TriggerClientEvent('hbs_ambulance:client:addictionUpdate', src, updated)
 
+        HBSLog('drugscompat', ('addiction increased: cid=%s %s %d→%d'):format(cid, cfg.substance, curLevel, newLevel))
+
         -- Notify player if addiction increased
         if newLevel > curLevel then
             local label = HBSConfig.Addiction.levelLabels[newLevel] or 'Unknown'
             TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
                 ('You feel a growing dependence. (%s: %s)'):format(cfg.substance, label))
         end
+    else
+        HBSLog('drugscompat', ('no addiction increase: cid=%s %s (rolled above %.2f)'):format(cid, cfg.substance, chance))
     end
 
     -- Also apply stress reduction client-side if defined
