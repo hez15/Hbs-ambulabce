@@ -30,6 +30,14 @@ CreateThread(function()
         PRIMARY KEY (`citizenid`, `substance`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
 
+    MySQL.query([[CREATE TABLE IF NOT EXISTS `hbs_wills` (
+        `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `citizenid`  VARCHAR(50)  NOT NULL,
+        `last_words` TEXT         NOT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`), KEY `idx_cid` (`citizenid`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
+
     MySQL.query([[CREATE TABLE IF NOT EXISTS `hbs_ems_research` (
         `citizenid`  VARCHAR(50) NOT NULL,
         `tier`       TINYINT     NOT NULL DEFAULT 1,
@@ -148,10 +156,17 @@ end)
 
 -- ── Respawn request ───────────────────────────────────────────────────────
 
-RegisterNetEvent('hbs_ambulance:server:requestRespawn', function()
+RegisterNetEvent('hbs_ambulance:server:requestRespawn', function(lastWords)
     local src = source
     local cid = HBSUtils.GetCitizenId(src)
     if not cid then return end
+
+    -- Save last words if provided
+    if lastWords and type(lastWords) == 'string' and #lastWords > 0 then
+        local trimmed = lastWords:sub(1, 280)  -- cap at textarea maxlength
+        MySQL.insert('INSERT INTO hbs_wills (citizenid, last_words) VALUES (?, ?)', { cid, trimmed })
+        HBSLog('requestRespawn', ('saved last words for cid=%s (%d chars)'):format(cid, #trimmed))
+    end
 
     DownedPlayers[src] = nil
     HBS.Set(src, 'isDowned', false)

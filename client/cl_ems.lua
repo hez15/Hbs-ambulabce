@@ -1,9 +1,11 @@
 -- HBS EMS: ox_target actions, revive/treat with research unlocks, downed blips
 
-local downedBlips = {}
-local carryActive = false
-local carriedPed  = nil
-local carriedSrc  = nil
+local downedBlips      = {}
+local carryActive      = false
+local carriedPed       = nil
+local carriedSrc       = nil
+local handsCooldownEnd = 0          -- GetGameTimer() timestamp when hands-only revive unlocks again
+local HANDS_COOLDOWN   = 3 * 60 * 1000  -- 3 minutes in ms
 
 -- ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -119,6 +121,16 @@ local function Revive(targetSrc)
     end
 
     -- Phase 1: assess / prepare pads (~1.2s)
+    -- Hands-only revive cooldown check
+    if HBSHasUnlock('hands_only_revive') and not HBSConfig.ReviveRequiresItem then
+        local remaining = handsCooldownEnd - GetGameTimer()
+        if remaining > 0 then
+            local secs = math.ceil(remaining / 1000)
+            exports.qbx_core:Notify(('Hands-Only Revive on cooldown — %ds remaining.'):format(secs), 'error')
+            return
+        end
+    end
+
     PlayAnim('missambulance', 'amb_action_treat_a_doctor', 49)
     Wait(1200)
 
@@ -130,6 +142,10 @@ local function Revive(targetSrc)
     ClearPedTasks(cache.ped)
 
     if success then
+        -- Track hands-only cooldown if used without item
+        if HBSHasUnlock('hands_only_revive') and not HBSConfig.ReviveRequiresItem then
+            handsCooldownEnd = GetGameTimer() + HANDS_COOLDOWN
+        end
         TriggerServerEvent('hbs_ambulance:server:emsRevive', targetSrc)
     else
         TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'revive')
@@ -197,6 +213,25 @@ StopCarry = function()
     carriedPed  = nil
     carriedSrc  = nil
 end
+
+-- ── Transport XP — award when EMS enters a vehicle while carrying ─────────
+
+local transportAwardedFor = {}  -- tracks which patient server IDs already awarded XP this carry
+
+CreateThread(function()
+    while true do
+        Wait(1000)
+        if carryActive and carriedSrc and IsPedInAnyVehicle(cache.ped, false) then
+            if not transportAwardedFor[carriedSrc] then
+                transportAwardedFor[carriedSrc] = true
+                TriggerServerEvent('hbs_ambulance:server:transportPatient', carriedSrc)
+            end
+        elseif not carryActive then
+            -- Reset table when not carrying anyone
+            transportAwardedFor = {}
+        end
+    end
+end)
 
 -- ── ox_target global player options ───────────────────────────────────────
 
@@ -344,6 +379,54 @@ exports.ox_target:addGlobalPlayer({
             end)
         end,
     },
+    {
+        label       = 'Full Surgery',
+        icon        = 'fas fa-scalpel',
+        distance    = 2.5,
+        canInteract = function(entity) return HBSIsEMS() and HBSHasUnlock('full_surgery') and PedIsDowned(entity) end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            CreateThread(function()
+                -- Phase 1: prep (2s)
+                PlayAnim('mini@crate_search@std@ps', 'crate_search_ps_std', 49)
+                Wait(2000)
+                -- Phase 2: procedure minigame (hard, surgery theme)
+                local success = RunMinigame('surgery', 'hard')
+                ClearPedTasks(cache.ped)
+                if success then
+                    TriggerServerEvent('hbs_ambulance:server:fullSurgery', srv)
+                    exports.qbx_core:Notify('Surgery complete — all injuries cleared.', 'success')
+                else
+                    TriggerServerEvent('hbs_ambulance:server:minigameFailed', srv, 'treat')
+                    exports.qbx_core:Notify('Surgery failed — complications encountered.', 'error')
+                end
+            end)
+        end,
+    },
+    {
+        label       = 'Mass Casualty Alert',
+        icon        = 'fas fa-satellite-dish',
+        distance    = 99.0,
+        canInteract = function() return HBSIsEMS() and HBSHasUnlock('mass_casualty') end,
+        onSelect    = function()
+            lib.registerContext({
+                id      = 'hbs_mca_confirm',
+                title   = '⚠ Mass Casualty Alert',
+                options = {
+                    {
+                        title       = 'Broadcast Alert to All EMS',
+                        description = 'Sends an emergency broadcast to every online EMS unit.',
+                        icon        = 'fas fa-broadcast-tower',
+                        onSelect    = function()
+                            TriggerServerEvent('hbs_ambulance:server:massCasualtyAlert')
+                        end,
+                    },
+                },
+            })
+            lib.showContext('hbs_mca_confirm')
+        end,
+    },
 })
 
 -- ── Downed blips (EMS only) ───────────────────────────────────────────────
@@ -430,6 +513,40 @@ RegisterNetEvent('hbs_ambulance:client:examineResult', function(result)
         },
     })
     lib.showContext('hbs_examine_result')
+end)
+
+-- ── Mass Casualty Alert ───────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:client:massCasualtyAlert', function(data)
+    -- Large prominent notification
+    lib.notify({
+        title       = '⚠ MASS CASUALTY EVENT',
+        description = data.message,
+        type        = 'error',
+        duration    = 12000,
+        position    = 'top',
+    })
+
+    -- Brief camera shake to grab attention
+    ShakeGameplayCam('LARGE_EXPLOSION_SHAKE', 0.10)
+    Wait(600)
+    ShakeGameplayCam('LARGE_EXPLOSION_SHAKE', 0.0)
+
+    -- Add a temporary blip at the caller's position
+    local blip = AddBlipForCoord(data.coords.x, data.coords.y, data.coords.z)
+    SetBlipSprite(blip, 161)      -- alert/warning sprite
+    SetBlipColour(blip, 1)        -- red
+    SetBlipScale(blip, 1.2)
+    SetBlipAsShortRange(blip, false)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName('Mass Casualty — ' .. (data.callerName or 'EMS'))
+    EndTextCommandSetBlipName(blip)
+
+    -- Auto-remove blip after 5 minutes
+    CreateThread(function()
+        Wait(300000)
+        if DoesBlipExist(blip) then RemoveBlip(blip) end
+    end)
 end)
 
 -- ── EMS XP / research state sync ─────────────────────────────────────────

@@ -91,6 +91,55 @@ local function PerformRevive(reviverSrc, targetSrc)
     TriggerEvent('hbs:server:broadcastDownedBlips')
 end
 
+-- ── Transport XP ──────────────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:transportPatient', function(targetSrc)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+    -- Only award if target is still downed
+    if not DownedPlayers[targetSrc] then return end
+    HBSLog('transportPatient', ('EMS %s transporting patient %s'):format(tostring(src), tostring(targetSrc)))
+    AwardXP(src, HBSConfig.EMSResearch.xpRewards.transport or 50)
+    TriggerClientEvent('hbs_ambulance:client:notify', src, 'success', 'Transport XP awarded.')
+end)
+
+-- ── Mass Casualty Alert (Tier 5) ──────────────────────────────────────────
+
+local mcaCooldowns = {}
+
+RegisterNetEvent('hbs_ambulance:server:massCasualtyAlert', function()
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+    if not HasUnlock(src, 'mass_casualty') then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires Mass Casualty Alert unlock.')
+        return
+    end
+
+    local now = os.time()
+    if (now - (mcaCooldowns[src] or 0)) < 300 then   -- 5 min cooldown
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Mass Casualty Alert on cooldown.')
+        return
+    end
+    mcaCooldowns[src] = now
+
+    local callerName = GetPlayerName(src)
+    local coords     = GetEntityCoords(GetPlayerPed(src))
+    local msg        = ('%s declared a MASS CASUALTY EVENT at %.0f, %.0f'):format(callerName, coords.x, coords.y)
+
+    HBSLog('massCasualtyAlert', msg)
+
+    local players = exports.qbx_core:GetQBPlayers()
+    for _, v in pairs(players) do
+        if v.PlayerData.job.type == 'ems' then
+            TriggerClientEvent('hbs_ambulance:client:massCasualtyAlert', v.PlayerData.source, {
+                callerName = callerName,
+                coords     = { x = coords.x, y = coords.y, z = coords.z },
+                message    = msg,
+            })
+        end
+    end
+end)
+
 -- ── Minigame failure penalty ──────────────────────────────────────────────
 
 RegisterNetEvent('hbs_ambulance:server:minigameFailed', function(targetSrc, actionType)
