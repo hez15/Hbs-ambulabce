@@ -4,7 +4,19 @@ All notable changes to this project are documented in this file.
 
 ---
 
-## [Unreleased] — 2026-04-04
+## [Unreleased] — 2026-04-04 (session 3)
+
+### Bug Fixes
+- **`cl_ems.lua`** — Added `reviveActive` lock flag to `Revive()` — without it ox_target could fire the function twice; the second call hit `_mgActive` guard inside `RunMinigame`, returned false immediately, and incorrectly triggered `minigameFailed` (dealing 15 HP damage to the patient and showing "Shock failed")
+- **`cl_ems.lua`** — Preload all EMS animation dicts (`missambulance`, `mini@repair`, `mp_suicide`, `mini@crate_search@std@ps`, `move_m@drunk@a`) on `hbs:client:stateLoaded` so `LoadDict` inside `PlayAnim` is a no-op by the time the EMS interacts with a patient — eliminates the multi-second delay before the minigame appears
+- **`ui/style.css`** — Removed `backdrop-filter: blur()` from `#medical-hud` and `#minigame` — FiveM's CEF cannot composite backdrop-filter against the game canvas and renders it as a solid black rectangle; replaced with a slightly more opaque background colour instead
+- **`ui/style.css`** — Added `background: transparent !important` to `html, body` — CEF requires explicit transparent root to avoid rendering a page background colour over the game world
+- **`sv_main_hbs.lua`** — Added `QBCore:Server:PlayerLoaded` hook (`ApplyPlayerStateBags`) that sets all state bags from DB server-side the moment the player loads — previously `HasUnlock()` returned `false` (tier 1) until the client's `getPlayerState` callback completed, meaning the first EMS action after login would see wrong tier/XP
+- **`sv_main_hbs.lua`** — `getPlayerState` callback now calls `ApplyPlayerStateBags` and reads back from state bags rather than re-querying DB independently, ensuring both code paths are consistent
+
+---
+
+## [Unreleased] — 2026-04-04 (session 2)
 
 ### Bug Fixes
 - **`cl_addiction.lua`** — Fixed `HBSNotify` argument order (was `HBSNotify('warning', msg)`, should be `HBSNotify(msg, 'warning')`)

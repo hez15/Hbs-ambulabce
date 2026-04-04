@@ -48,6 +48,31 @@ CreateThread(function()
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
 end)
 
+-- ── Set state bags on server-side player load ─────────────────────────────
+-- This runs BEFORE the client's lib.callback fires, so HasUnlock() works
+-- from the very first server event the player triggers (e.g. first revive).
+
+local function ApplyPlayerStateBags(src, cid)
+    local emsResearch = DB.LoadEMSResearch(cid)
+    local injuries    = DB.LoadInjuries(cid)
+    local stress      = DB.LoadStress(cid)
+    local addiction   = DB.LoadAddiction(cid)
+    HBS.Set(src, 'emsTier',    emsResearch.tier)
+    HBS.Set(src, 'emsXP',      emsResearch.xp)
+    HBS.Set(src, 'emsUnlocks', emsResearch.unlocks)
+    HBS.Set(src, 'injuries',   injuries)
+    HBS.Set(src, 'stress',     stress)
+    HBS.Set(src, 'addiction',  addiction)
+    HBSLog('ApplyPlayerStateBags', ('cid=%s tier=%d xp=%d'):format(cid, emsResearch.tier, emsResearch.xp))
+end
+
+AddEventHandler('QBCore:Server:PlayerLoaded', function(player)
+    local src = player.PlayerData.source
+    local cid = player.PlayerData.citizenid
+    if not cid then return end
+    ApplyPlayerStateBags(src, cid)
+end)
+
 -- ── Player state callback ─────────────────────────────────────────────────
 
 lib.callback.register('hbs_ambulance:server:getPlayerState', function(source)
@@ -55,20 +80,20 @@ lib.callback.register('hbs_ambulance:server:getPlayerState', function(source)
     local cid = HBSUtils.GetCitizenId(src)
     if not cid then return nil end
 
-    local injuries    = DB.LoadInjuries(cid)
-    local stress      = DB.LoadStress(cid)
-    local addiction   = DB.LoadAddiction(cid)
-    local emsResearch = DB.LoadEMSResearch(cid)
+    -- Re-apply state bags (handles cases where QBCore:Server:PlayerLoaded fired before DB was ready)
+    ApplyPlayerStateBags(src, cid)
 
-    HBS.Set(src, 'injuries',   injuries)
-    HBS.Set(src, 'stress',     stress)
-    HBS.Set(src, 'addiction',  addiction)
-    HBS.Set(src, 'emsTier',    emsResearch.tier)
-    HBS.Set(src, 'emsXP',      emsResearch.xp)
-    HBS.Set(src, 'emsUnlocks', emsResearch.unlocks)
+    local injuries    = HBS.Get(src, 'injuries')   or {}
+    local stress      = HBS.Get(src, 'stress')     or 0
+    local addiction   = HBS.Get(src, 'addiction')  or {}
+    local emsResearch = {
+        tier    = HBS.Get(src, 'emsTier')    or 1,
+        xp      = HBS.Get(src, 'emsXP')      or 0,
+        unlocks = HBS.Get(src, 'emsUnlocks') or {},
+    }
 
-    HBSLog('getPlayerState', ('cid=%s stress=%d tier=%d xp=%d injuries=%d'):format(
-        cid, stress, emsResearch.tier, emsResearch.xp, (function() local n=0; for _ in pairs(injuries) do n=n+1 end; return n end)()))
+    HBSLog('getPlayerState', ('cid=%s stress=%d tier=%d xp=%d'):format(
+        cid, stress, emsResearch.tier, emsResearch.xp))
 
     return {
         injuries    = injuries,

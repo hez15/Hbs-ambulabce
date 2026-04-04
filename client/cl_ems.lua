@@ -6,6 +6,7 @@ local carriedPed       = nil
 local carriedSrc       = nil
 local handsCooldownEnd = 0          -- GetGameTimer() timestamp when hands-only revive unlocks again
 local HANDS_COOLDOWN   = 3 * 60 * 1000  -- 3 minutes in ms
+local reviveActive     = false      -- prevents double-fire from ox_target
 
 -- ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -96,7 +97,26 @@ local function SuggestTriage(targetSrc)
     else return 'minor' end
 end
 
--- ── Play animation helper ─────────────────────────────────────────────────
+-- ── Animation helpers ────────────────────────────────────────────────────
+
+local EMS_ANIM_DICTS = {
+    'missambulance',
+    'mini@repair',
+    'mp_suicide',
+    'mini@crate_search@std@ps',
+    'move_m@drunk@a',
+}
+
+-- Preload all EMS animation dicts on player load so there is no
+-- blocking wait the first time Revive / Treat / Surgery is called.
+AddEventHandler('hbs:client:stateLoaded', function()
+    CreateThread(function()
+        for _, dict in ipairs(EMS_ANIM_DICTS) do
+            RequestAnimDict(dict)
+        end
+        HBSUtils.Debug('ems', 'anim dicts preloaded')
+    end)
+end)
 
 local function LoadDict(dict)
     RequestAnimDict(dict)
@@ -116,6 +136,12 @@ end
 -- ── Revive ────────────────────────────────────────────────────────────────
 
 local function Revive(targetSrc)
+    if reviveActive then
+        HBSUtils.Debug('ems', 'Revive blocked — already in progress')
+        return
+    end
+    reviveActive = true
+
     HBSUtils.Debug('ems', ('Revive: target=%s handsUnlock=%s requiresItem=%s'):format(
         tostring(targetSrc), tostring(HBSHasUnlock('hands_only_revive')), tostring(HBSConfig.ReviveRequiresItem)))
 
@@ -123,6 +149,7 @@ local function Revive(targetSrc)
         if exports.ox_inventory:Search('count', HBSConfig.ReviveItem) < 1 then
             HBSUtils.Debug('ems', 'Revive blocked — missing item: ' .. HBSConfig.ReviveItem)
             exports.qbx_core:Notify('You need a ' .. HBSConfig.ReviveItem .. '.', 'error')
+            reviveActive = false
             return
         end
     end
@@ -134,6 +161,7 @@ local function Revive(targetSrc)
             local secs = math.ceil(remaining / 1000)
             HBSUtils.Debug('ems', ('Revive blocked — hands cooldown %ds remaining'):format(secs))
             exports.qbx_core:Notify(('Hands-Only Revive on cooldown — %ds remaining.'):format(secs), 'error')
+            reviveActive = false
             return
         end
     end
@@ -152,7 +180,6 @@ local function Revive(targetSrc)
 
     if success then
         HBSUtils.Debug('ems', 'Revive succeeded for target=' .. tostring(targetSrc))
-        -- Track hands-only cooldown if used without item
         if HBSHasUnlock('hands_only_revive') and not HBSConfig.ReviveRequiresItem then
             handsCooldownEnd = GetGameTimer() + HANDS_COOLDOWN
             HBSUtils.Debug('ems', 'hands-only cooldown set')
@@ -163,6 +190,8 @@ local function Revive(targetSrc)
         TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'revive')
         exports.qbx_core:Notify('Shock failed — poor timing.', 'error')
     end
+
+    reviveActive = false
 end
 
 -- ── Treat wounds ──────────────────────────────────────────────────────────
