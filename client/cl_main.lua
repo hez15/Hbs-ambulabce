@@ -32,29 +32,48 @@ end
 
 -- ── Player loaded / unloaded ──────────────────────────────────────────────
 
+-- Guard against QBX firing both QBCore:Client:OnPlayerLoaded AND
+-- qbx_core:playerLoaded in the same session, which would double-call
+-- OnPlayerLoaded and send getPlayerState twice.
+local _playerLoadInProgress = false
+
 local function OnPlayerLoaded()
-    HBSState.loaded = true
+    if _playerLoadInProgress then
+        HBSUtils.Debug('client', 'OnPlayerLoaded called again while already loading — skipping duplicate')
+        return
+    end
+    _playerLoadInProgress = true
 
     SetEntityInvincible(cache.ped, false)
 
     lib.callback.await('hbs_ambulance:server:getPlayerState', false, function(data)
-        if not data then return end
+        _playerLoadInProgress = false
+
+        if not data then
+            HBSUtils.Debug('client', 'getPlayerState returned nil — server may not have citizen ID yet')
+            HBSState.loaded = true
+            TriggerEvent('hbs:client:stateLoaded')
+            return
+        end
+
         local research = data.emsResearch or { tier = 1, xp = 0, unlocks = {} }
 
         HBSState.injuries    = data.injuries  or {}
         HBSState.stress      = data.stress    or 0
         HBSState.addiction   = data.addiction or {}
         HBSState.emsResearch = research
-        -- Keep flat fields in sync so crafting/research menus read correctly
         HBSState.emsTier     = research.tier    or 1
         HBSState.emsXP       = research.xp      or 0
         HBSState.emsUnlocks  = research.unlocks or {}
+        -- Mark loaded AFTER data is populated so ticks see valid state
+        HBSState.loaded = true
 
         HBS.SetLocal('injuries',  HBSState.injuries)
         HBS.SetLocal('stress',    HBSState.stress)
         HBS.SetLocal('addiction', HBSState.addiction)
 
-        HBSUtils.Debug('client', 'State loaded', 'tier=' .. HBSState.emsTier, 'xp=' .. HBSState.emsXP, 'injuries=' .. tostring(next(HBSState.injuries) ~= nil))
+        HBSUtils.Debug('client', ('state loaded: tier=%d xp=%d stress=%d'):format(
+            HBSState.emsTier, HBSState.emsXP, HBSState.stress))
 
         TriggerEvent('hbs:client:stateLoaded')
         TriggerEvent('hbs:client:hudUpdate')
@@ -62,6 +81,7 @@ local function OnPlayerLoaded()
 end
 
 local function OnPlayerUnloaded()
+    _playerLoadInProgress = false
     HBSState = {
         isDowned = false, injuries = {}, stress = 0,
         inPain = false, bloodloss = false, addiction = {},
