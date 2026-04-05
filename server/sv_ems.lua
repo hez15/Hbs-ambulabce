@@ -214,6 +214,27 @@ RegisterNetEvent('hbs_ambulance:server:emsTreat', function(targetSrc)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
 end)
 
+-- ── Quick vitals check (no unlock required, alive players only) ──────────────
+
+RegisterNetEvent('hbs_ambulance:server:checkVitals', function(targetSrc)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+    local ped = GetPlayerPed(targetSrc)
+    if not ped or ped == 0 then return end
+
+    local hp     = GetEntityHealth(ped)
+    local maxHp  = GetEntityMaxHealth(ped)
+    local cid    = HBSUtils.GetCitizenId(targetSrc)
+    local stress = cid and DB.LoadStress(cid) or 0
+
+    TriggerClientEvent('hbs_ambulance:client:vitalsResult', src, {
+        playerName = GetPlayerName(targetSrc),
+        health     = hp,
+        maxHealth  = maxHp,
+        stress     = stress,
+    })
+end)
+
 -- ── Examine patient (Tier 2 unlock) ──────────────────────────────────────────
 
 RegisterNetEvent('hbs_ambulance:server:examinePlayer', function(targetSrc)

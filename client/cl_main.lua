@@ -46,7 +46,7 @@ local function OnPlayerLoaded()
 
     SetEntityInvincible(cache.ped, false)
 
-    lib.callback.await('hbs_ambulance:server:getPlayerState', false, function(data)
+    lib.callback('hbs_ambulance:server:getPlayerState', false, function(data)
         _playerLoadInProgress = false
 
         if not data then

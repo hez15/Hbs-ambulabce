@@ -54,10 +54,12 @@ function hideHUD() {
 // ── Medical Minigame ──────────────────────────────────────────────────────────
 
 const MG_THEMES = {
-    defib:   { color: '#e03030', icon: '⚡', label: 'Defibrillator'    },
-    treat:   { color: '#22c55e', icon: '🩹', label: 'Treating Wounds'  },
-    detox:   { color: '#7c3aed', icon: '💉', label: 'Administer Detox' },
-    surgery: { color: '#0ea5e9', icon: '🔬', label: 'Surgery'          },
+    defib:   { color: '#e03030', icon: '⚡', label: 'Defibrillator',    mode: 'bar'   },
+    treat:   { color: '#22c55e', icon: '🩹', label: 'Treating Wounds',  mode: 'bar'   },
+    suture:  { color: '#22c55e', icon: '🩺', label: 'Suturing Wound',   mode: 'bar'   },
+    detox:   { color: '#7c3aed', icon: '💉', label: 'Administer Detox', mode: 'bar'   },
+    surgery: { color: '#0ea5e9', icon: '🔬', label: 'Surgery',          mode: 'bar'   },
+    cpr:     { color: '#f97316', icon: '💓', label: 'CPR Compressions', mode: 'press' },
 };
 
 const MG_DIFF = {
@@ -73,6 +75,7 @@ function startMinigame(cfg) {
     const diff   = MG_DIFF[cfg.difficulty] || MG_DIFF.medium;
     const theme  = MG_THEMES[cfg.theme]    || MG_THEMES.treat;
     const rounds = cfg.rounds || diff.rounds;
+    const pressTarget = cfg.pressTarget || 12;
 
     mg = {
         theme, diff,
@@ -80,27 +83,42 @@ function startMinigame(cfg) {
         cursor: 0, dir: 1,
         zoneStart: randomZone(diff.zoneSize),
         lastTs: null,
+        mode: theme.mode || 'bar',
+        pressTarget, pressCount: 0,
     };
 
-    // Apply theme
+    // Apply theme colour and header
     const el = document.getElementById('minigame');
     el.style.setProperty('--mg-color', theme.color);
     document.getElementById('mg-icon').textContent  = theme.icon;
     document.getElementById('mg-label').textContent = theme.label;
-    document.getElementById('mg-zone').style.borderColor =
-        hexToRgba(theme.color, 0.65);
-    document.getElementById('mg-zone').style.background =
-        hexToRgba(theme.color, 0.22);
-    document.getElementById('mg-cursor').style.background = '#ffffff';
-    document.getElementById('mg-cursor').style.boxShadow  = '0 0 6px rgba(255,255,255,0.8)';
-    document.getElementById('mg-cursor').className = '';
 
-    applyZone();
-    updateRoundCounter();
+    if (mg.mode === 'press') {
+        // CPR press mode
+        document.getElementById('mg-track-wrap').classList.add('hidden');
+        document.getElementById('mg-press-wrap').classList.remove('hidden');
+        document.getElementById('mg-press-cur').textContent = '0';
+        document.getElementById('mg-press-max').textContent = pressTarget;
+        document.getElementById('mg-press-bar-fill').style.width = '0%';
+        document.getElementById('mg-hint').textContent = 'Press [E] repeatedly for compressions';
+        document.getElementById('mg-rounds').textContent = '';
+    } else {
+        // Precision bar mode
+        document.getElementById('mg-track-wrap').classList.remove('hidden');
+        document.getElementById('mg-press-wrap').classList.add('hidden');
+        document.getElementById('mg-zone').style.borderColor = hexToRgba(theme.color, 0.65);
+        document.getElementById('mg-zone').style.background  = hexToRgba(theme.color, 0.22);
+        document.getElementById('mg-cursor').style.background = '#ffffff';
+        document.getElementById('mg-cursor').style.boxShadow  = '0 0 6px rgba(255,255,255,0.8)';
+        document.getElementById('mg-cursor').className = '';
+        document.getElementById('mg-hint').textContent = 'Press [E] when the marker is inside the zone';
+        applyZone();
+        updateRoundCounter();
+        if (mgRaf) cancelAnimationFrame(mgRaf);
+        mgRaf = requestAnimationFrame(mgTick);
+    }
+
     el.classList.remove('hidden');
-
-    if (mgRaf) cancelAnimationFrame(mgRaf);
-    mgRaf = requestAnimationFrame(mgTick);
 }
 
 function mgTick(ts) {
@@ -118,6 +136,26 @@ function mgTick(ts) {
 
 function minigamePress() {
     if (!mg) return;
+
+    if (mg.mode === 'press') {
+        // CPR compression tap
+        mg.pressCount++;
+        const pct = Math.min(100, (mg.pressCount / mg.pressTarget) * 100);
+        document.getElementById('mg-press-cur').textContent = mg.pressCount;
+        document.getElementById('mg-press-bar-fill').style.width = pct + '%';
+
+        // Bounce the counter to give tactile feel
+        const countEl = document.getElementById('mg-press-count');
+        countEl.style.transform = 'scale(1.18)';
+        setTimeout(() => { countEl.style.transform = 'scale(1)'; }, 80);
+
+        if (mg.pressCount >= mg.pressTarget) {
+            setTimeout(() => stopMinigame(true), 250);
+        }
+        return;
+    }
+
+    // Precision bar mode
     const pos = mg.cursor;
     const hit = pos >= mg.zoneStart && pos <= (mg.zoneStart + mg.diff.zoneSize);
 
@@ -141,6 +179,10 @@ function minigamePress() {
 function stopMinigame(success) {
     if (!mg) return;
     cancelAnimationFrame(mgRaf);
+    mgRaf = null;
+    // Reset both mode sections so they're ready for next use
+    document.getElementById('mg-track-wrap').classList.remove('hidden');
+    document.getElementById('mg-press-wrap').classList.add('hidden');
     document.getElementById('minigame').classList.add('hidden');
     mg = null;
 

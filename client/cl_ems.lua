@@ -35,20 +35,37 @@ RegisterNuiCallback('minigameResult', function(data, cb)
     cb('ok')
 end)
 
--- Runs the NUI precision bar minigame.
--- E key presses are detected in Lua and forwarded to JS.
+-- Runs the NUI minigame.
+-- theme='cpr' uses press-counter mode (pressTarget taps required).
+-- All other themes use the precision bar (bar mode).
 -- Returns true on success, false on failure or timeout.
-local function RunMinigame(theme, difficulty)
+local function RunMinigame(theme, difficulty, pressTarget)
     if _mgActive then return false end
     _mgResult = nil
     _mgActive = true
 
     local diff   = ({ easy = 1, medium = 2, hard = 3 })[difficulty] or 2
     local rounds = diff
-    local timeoutMs = rounds * 9000 + 2000
+    local timeoutMs
 
-    HBSUtils.Debug('ems', ('minigame start: theme=%s difficulty=%s rounds=%d'):format(theme, difficulty, rounds))
-    SendNUIMessage({ action = 'startMinigame', theme = theme, difficulty = difficulty, rounds = rounds })
+    if theme == 'cpr' then
+        pressTarget = pressTarget or 12
+        timeoutMs   = pressTarget * 900 + 3000   -- ~0.9s per compression + buffer
+        rounds      = 1
+    else
+        pressTarget = nil
+        timeoutMs   = rounds * 9000 + 2000
+    end
+
+    HBSUtils.Debug('ems', ('minigame start: theme=%s difficulty=%s rounds=%d pressTarget=%s'):format(
+        theme, difficulty, rounds, tostring(pressTarget)))
+    SendNUIMessage({
+        action      = 'startMinigame',
+        theme       = theme,
+        difficulty  = difficulty,
+        rounds      = rounds,
+        pressTarget = pressTarget,
+    })
 
     local deadline = GetGameTimer() + timeoutMs
     while _mgActive and GetGameTimer() < deadline do
@@ -166,11 +183,25 @@ local function Revive(targetSrc)
         end
     end
 
-    -- Play defib animation (runs during minigame)
-    PlayAnim('missambulance', 'amb_action_defib_a_doctor', 49)
+    local rapidRevive = HBSHasUnlock('rapid_revive')
 
-    local difficulty = HBSHasUnlock('rapid_revive') and 'easy' or 'medium'
-    HBSUtils.Debug('ems', ('Revive minigame: difficulty=%s rapidRevive=%s'):format(difficulty, tostring(HBSHasUnlock('rapid_revive'))))
+    -- Phase 1: CPR compressions (player must rapidly press E)
+    PlayAnim('missambulance', 'amb_action_treat_a_doctor', 49)
+    local cprTarget = rapidRevive and 8 or 12
+    HBSUtils.Debug('ems', ('CPR phase: compressions=%d'):format(cprTarget))
+    local cprOk = RunMinigame('cpr', 'easy', cprTarget)
+    if not cprOk then
+        ClearPedTasks(cache.ped)
+        exports.qbx_core:Notify('CPR failed — maintain compression rhythm.', 'error')
+        TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'revive')
+        reviveActive = false
+        return
+    end
+
+    -- Phase 2: Defib shock (precision bar)
+    PlayAnim('missambulance', 'amb_action_defib_a_doctor', 49)
+    local difficulty = rapidRevive and 'easy' or 'medium'
+    HBSUtils.Debug('ems', ('Defib phase: difficulty=%s'):format(difficulty))
     local success = RunMinigame('defib', difficulty)
     ClearPedTasks(cache.ped)
 
@@ -312,6 +343,18 @@ exports.ox_target:addGlobalPlayer({
                     TriggerServerEvent('hbs_ambulance:server:civilianRevive', 'firstaidkit', srv)
                 end
             end)
+        end,
+    },
+    {
+        name        = 'hbs_ems_vitals',
+        label       = 'Check Vitals',
+        icon        = 'fas fa-heart-pulse',
+        distance    = 2.5,
+        canInteract = function(entity) return HBSIsEMS() and not PedIsDowned(entity) end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            TriggerServerEvent('hbs_ambulance:server:checkVitals', srv)
         end,
     },
     {
@@ -601,6 +644,32 @@ RegisterNetEvent('hbs_ambulance:client:massCasualtyAlert', function(data)
         Wait(300000)
         if DoesBlipExist(blip) then RemoveBlip(blip) end
     end)
+end)
+
+-- ── Vitals result display ─────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:client:vitalsResult', function(result)
+    local hp     = result.health or 200
+    local maxHp  = result.maxHealth or 200
+    local pct    = maxHp > 100 and math.floor(((hp - 100) / (maxHp - 100)) * 100) or 0
+    pct = math.max(0, math.min(100, pct))
+
+    local stressLabel = (function(s)
+        if s >= 75 then return ('Critical (%d%%)'):format(s)
+        elseif s >= 50 then return ('High (%d%%)'):format(s)
+        elseif s >= 25 then return ('Elevated (%d%%)'):format(s)
+        else return ('Normal (%d%%)'):format(s) end
+    end)(result.stress or 0)
+
+    lib.registerContext({
+        id      = 'hbs_vitals_result',
+        title   = ('Vitals — %s'):format(result.playerName or 'Unknown'),
+        options = {
+            { title = ('Health:  %d%%'):format(pct),   disabled = true, icon = 'fas fa-heart' },
+            { title = ('Stress:  %s'):format(stressLabel), disabled = true, icon = 'fas fa-brain' },
+        },
+    })
+    lib.showContext('hbs_vitals_result')
 end)
 
 -- ── EMS XP / research state sync ─────────────────────────────────────────

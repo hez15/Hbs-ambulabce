@@ -53,12 +53,25 @@
         <span id="mg-icon"></span>
         <span id="mg-label">Treating Wounds</span>
     </div>
+
+    <!-- Bar mode (precision timing) -->
     <div id="mg-track-wrap">
         <div id="mg-track">
             <div id="mg-zone"></div>
             <div id="mg-cursor"></div>
         </div>
     </div>
+
+    <!-- Press mode (CPR compressions) -->
+    <div id="mg-press-wrap" class="hidden">
+        <div id="mg-press-heart">💓</div>
+        <div id="mg-press-count">
+            <span id="mg-press-cur">0</span><span id="mg-press-sep">/</span><span id="mg-press-max">12</span>
+        </div>
+        <div id="mg-press-sublabel">COMPRESSIONS</div>
+        <div id="mg-press-bar-bg"><div id="mg-press-bar-fill"></div></div>
+    </div>
+
     <div id="mg-footer">
         <span id="mg-hint">Press <kbd>E</kbd> when the marker is inside the zone</span>
         <span id="mg-rounds">Round <span id="mg-round-cur">1</span> / <span id="mg-round-max">2</span></span>

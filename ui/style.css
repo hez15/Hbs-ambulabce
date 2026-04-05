@@ -278,6 +278,64 @@ html, body {
     --mg-color: #22c55e;
 }
 
+/* ── CPR press mode ──────────────────────────────────────── */
+
+#mg-press-wrap {
+    padding: 8px 16px 14px;
+    text-align: center;
+}
+
+#mg-press-heart {
+    font-size: 2.2em;
+    line-height: 1;
+    margin-bottom: 6px;
+    animation: heartbeat 0.6s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1.0); }
+    30%       { transform: scale(1.18); }
+    60%       { transform: scale(0.96); }
+}
+
+#mg-press-count {
+    font-size: 2.6em;
+    font-weight: 800;
+    color: var(--mg-color);
+    line-height: 1;
+    margin-bottom: 2px;
+    transition: transform 0.07s ease;
+}
+
+#mg-press-sep {
+    font-size: 0.65em;
+    font-weight: 400;
+    margin: 0 4px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+#mg-press-sublabel {
+    font-size: 0.65em;
+    letter-spacing: 0.18em;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 10px;
+}
+
+#mg-press-bar-bg {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+#mg-press-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--mg-color);
+    border-radius: 3px;
+    transition: width 0.08s linear;
+}
+
 #mg-zone {
     background: color-mix(in srgb, var(--mg-color) 25%, transparent);
     border-color: color-mix(in srgb, var(--mg-color) 70%, transparent);
