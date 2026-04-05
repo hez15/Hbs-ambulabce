@@ -166,11 +166,7 @@ local function Revive(targetSrc)
         end
     end
 
-    -- Phase 1: assess / prepare pads (~1.2s)
-    PlayAnim('missambulance', 'amb_action_treat_a_doctor', 49)
-    Wait(1200)
-
-    -- Phase 2: deliver shock (loops during minigame)
+    -- Play defib animation (runs during minigame)
     PlayAnim('missambulance', 'amb_action_defib_a_doctor', 49)
 
     local difficulty = HBSHasUnlock('rapid_revive') and 'easy' or 'medium'
@@ -285,13 +281,14 @@ end)
 
 exports.ox_target:addGlobalPlayer({
     {
+        name        = 'hbs_civilian_revive',
         label       = 'Revive with First Aid Kit',
         icon        = 'fas fa-kit-medical',
         distance    = 3.0,
         canInteract = function(entity)
             if HBSIsEMS() then return false end -- EMS uses the proper revive option
             if not PedIsDowned(entity) then return false end
-            return exports.ox_inventory:GetItemCount(cache.playerId, 'firstaidkit') >= 1
+            return exports.ox_inventory:Search('count', 'firstaidkit') >= 1
         end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
@@ -318,6 +315,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_revive',
         label       = 'Revive Patient',
         icon        = 'fas fa-heartbeat',
         distance    = 3.0,
@@ -328,6 +326,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_treat',
         label       = 'Treat Wounds',
         icon        = 'fas fa-band-aid',
         distance    = 3.0,
@@ -338,6 +337,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_examine',
         label       = 'Examine Patient',
         icon        = 'fas fa-stethoscope',
         distance    = 2.5,
@@ -349,6 +349,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_carry',
         label       = 'Carry Patient',
         icon        = 'fas fa-hands-holding',
         distance    = 3.0,
@@ -359,6 +360,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_triage',
         label       = 'Triage Patient',
         icon        = 'fas fa-triangle-exclamation',
         distance    = 3.0,
@@ -388,6 +390,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_detox',
         label       = 'Administer Detox',
         icon        = 'fas fa-flask-vial',
         distance    = 3.0,
@@ -408,6 +411,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_full_detox',
         label       = 'Full Detox Treatment',
         icon        = 'fas fa-shield-virus',
         distance    = 3.0,
@@ -428,6 +432,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_surgery',
         label       = 'Full Surgery',
         icon        = 'fas fa-scalpel',
         distance    = 2.5,
@@ -453,6 +458,7 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_mca',
         label       = 'Mass Casualty Alert',
         icon        = 'fas fa-satellite-dish',
         distance    = 99.0,

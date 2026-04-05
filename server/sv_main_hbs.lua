@@ -6,7 +6,7 @@ DispatchCooldowns = {}
 -- ── Create tables on startup ──────────────────────────────────────────────
 
 CreateThread(function()
-    MySQL.query([[CREATE TABLE IF NOT EXISTS `hbs_injuries` (
+    MySQL.query.await([[CREATE TABLE IF NOT EXISTS `hbs_injuries` (
         `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
         `citizenid`  VARCHAR(50)  NOT NULL,
         `body_part`  VARCHAR(20)  NOT NULL,
@@ -15,14 +15,14 @@ CreateThread(function()
         PRIMARY KEY (`id`), KEY `idx_cid` (`citizenid`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
 
-    MySQL.query([[CREATE TABLE IF NOT EXISTS `hbs_stress` (
+    MySQL.query.await([[CREATE TABLE IF NOT EXISTS `hbs_stress` (
         `citizenid`  VARCHAR(50)      NOT NULL,
         `stress`     TINYINT UNSIGNED NOT NULL DEFAULT 0,
         `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`citizenid`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
 
-    MySQL.query([[CREATE TABLE IF NOT EXISTS `hbs_addiction` (
+    MySQL.query.await([[CREATE TABLE IF NOT EXISTS `hbs_addiction` (
         `citizenid`  VARCHAR(50) NOT NULL,
         `substance`  VARCHAR(50) NOT NULL,
         `level`      TINYINT(1)  NOT NULL DEFAULT 0,
@@ -30,7 +30,7 @@ CreateThread(function()
         PRIMARY KEY (`citizenid`, `substance`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
 
-    MySQL.query([[CREATE TABLE IF NOT EXISTS `hbs_wills` (
+    MySQL.query.await([[CREATE TABLE IF NOT EXISTS `hbs_wills` (
         `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
         `citizenid`  VARCHAR(50)  NOT NULL,
         `last_words` TEXT         NOT NULL,
@@ -38,7 +38,7 @@ CreateThread(function()
         PRIMARY KEY (`id`), KEY `idx_cid` (`citizenid`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
 
-    MySQL.query([[CREATE TABLE IF NOT EXISTS `hbs_ems_research` (
+    MySQL.query.await([[CREATE TABLE IF NOT EXISTS `hbs_ems_research` (
         `citizenid`  VARCHAR(50) NOT NULL,
         `tier`       TINYINT     NOT NULL DEFAULT 1,
         `xp`         INT         NOT NULL DEFAULT 0,
@@ -46,6 +46,8 @@ CreateThread(function()
         `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`citizenid`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
+
+    HBSLog('startup', 'all DB tables created/verified')
 end)
 
 -- ── Set state bags on server-side player load ─────────────────────────────
@@ -77,8 +79,22 @@ end)
 
 lib.callback.register('hbs_ambulance:server:getPlayerState', function(source)
     local src = source
-    local cid = HBSUtils.GetCitizenId(src)
-    if not cid then return nil end
+
+    -- QBX may not have registered the player yet on the very first login tick;
+    -- retry up to 5 times with a short wait before giving up.
+    local cid = nil
+    for i = 1, 5 do
+        local player = exports.qbx_core:GetPlayer(src)
+        if player then
+            cid = player.PlayerData.citizenid
+            break
+        end
+        Wait(400)
+    end
+    if not cid then
+        HBSLog('getPlayerState', ('WARNING: could not resolve cid for src=%s after retries'):format(tostring(src)))
+        return nil
+    end
 
     -- Re-apply state bags (handles cases where QBCore:Server:PlayerLoaded fired before DB was ready)
     ApplyPlayerStateBags(src, cid)
