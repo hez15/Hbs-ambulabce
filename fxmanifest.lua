@@ -50,7 +50,8 @@ client_scripts {
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
-    -- HBS server files
+    -- HBS server files (migrations must run before database helpers)
+    'server/sv_migrations.lua',
     'server/sv_database.lua',
     'server/sv_main_hbs.lua',
     'server/sv_injury.lua',
