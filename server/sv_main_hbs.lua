@@ -137,7 +137,11 @@ RegisterNetEvent('hbs_ambulance:server:playerDowned', function()
     local last = DispatchCooldowns[src] or 0
     if (now - last) >= (HBSConfig.DispatchCooldown or 30) then
         DispatchCooldowns[src] = now
-        -- Also use qbx alert
+
+        -- ps-dispatch + lb-phone
+        HBSDispatch.CivilianDown(src, coords)
+
+        -- qbx ambulance alert (in-game blip/sound for EMS on duty)
         local msg = string.format('Civilian down at %.0f, %.0f', coords.x, coords.y)
         local players = exports.qbx_core:GetQBPlayers()
         for _, v in pairs(players) do

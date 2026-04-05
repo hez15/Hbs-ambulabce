@@ -19,6 +19,10 @@ dependencies {
     'oxmysql',
 }
 
+-- Optional integrations (disable in HBSConfig.Integrations if not installed)
+-- 'ps-dispatch'
+-- 'lb-phone'
+
 shared_scripts {
     '@ox_lib/init.lua',
     '@qbx_core/modules/lib.lua',
@@ -53,6 +57,7 @@ server_scripts {
     -- HBS server files (migrations must run before database helpers)
     'server/sv_migrations.lua',
     'server/sv_database.lua',
+    'server/sv_dispatch.lua',
     'server/sv_main_hbs.lua',
     'server/sv_injury.lua',
     'server/sv_ems.lua',

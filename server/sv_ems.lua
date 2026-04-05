@@ -134,6 +134,9 @@ RegisterNetEvent('hbs_ambulance:server:massCasualtyAlert', function()
 
     HBSLog('massCasualtyAlert', msg)
 
+    -- ps-dispatch + lb-phone (excludes the caller from lb-phone push)
+    HBSDispatch.MassCasualty(src, coords, callerName)
+
     local players = exports.qbx_core:GetQBPlayers()
     for _, v in pairs(players) do
         if v.PlayerData.job.type == 'ems' then

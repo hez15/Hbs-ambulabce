@@ -44,6 +44,58 @@ HBSConfig.ReviveItem         = 'defibrillator'
 HBSConfig.DispatchCooldown = 30
 HBSConfig.MinEmsOnline = 1
 
+-- ── Third-party integrations ──────────────────────────────────────────────────
+-- Set to false if you don't have the resource installed.
+
+HBSConfig.Integrations = {
+    psDispatch = true,   -- ps-dispatch: creates blip + card in the dispatch MDT
+    lbPhone    = true,   -- lb-phone: push notification to all on-duty EMS phones
+}
+
+-- ── Dispatch call definitions ─────────────────────────────────────────────────
+-- Each entry maps to a ps-dispatch CallBlip payload.
+-- jobs: which job types receive the call in ps-dispatch.
+-- blip.time: how long the blip stays on the map (ms).
+
+HBSConfig.Dispatch = {
+    civilianDown = {
+        message  = 'Civilian Requires Medical Attention',
+        codeName = 'hbsCivilianDown',
+        code     = '10-52',
+        icon     = 'fas fa-ambulance',
+        priority = 1,
+        color    = '#e74c3c',
+        jobs     = { 'ambulance' },
+        blip     = {
+            sprite  = 153,
+            scale   = 1.2,
+            colour  = 1,
+            flashes = true,
+            text    = 'Civilian Down',
+            time    = 180000,   -- 3 minutes
+            radius  = 0,
+        },
+    },
+    massCasualty = {
+        message  = 'MASS CASUALTY EVENT — Multiple casualties reported',
+        codeName = 'hbsMassCasualty',
+        code     = 'MCI',
+        icon     = 'fas fa-hospital',
+        priority = 1,
+        color    = '#c0392b',
+        jobs     = { 'ambulance' },
+        blip     = {
+            sprite  = 153,
+            scale   = 1.5,
+            colour  = 1,
+            flashes = true,
+            text    = 'Mass Casualty Event',
+            time    = 300000,   -- 5 minutes
+            radius  = 0,
+        },
+    },
+}
+
 HBSConfig.Stress = {
     max = 100,
     naturalDecay = 1,
