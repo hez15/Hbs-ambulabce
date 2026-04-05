@@ -1,9 +1,18 @@
 -- HBS HUD: sends state to the NUI SVG body diagram
 
 local function GetHealthPct()
-    -- FiveM health: 100 = dead, 200 = full. Normalize to 0-100.
-    local hp = GetEntityHealth(cache.ped)
-    return math.max(0, math.min(100, hp - 100))
+    -- Use PlayerPedId() directly — cache.ped can be 0 during early ticks
+    local ped = PlayerPedId()
+    if not ped or ped == 0 then return 0 end
+
+    local hp    = GetEntityHealth(ped)
+    local maxHp = GetEntityMaxHealth(ped)
+    -- GTA player death floor is 100; max health varies per server config
+    if maxHp <= 100 then return 0 end
+
+    local pct = ((hp - 100) / (maxHp - 100)) * 100
+    HBSUtils.Debug('hud', ('health: raw=%d max=%d pct=%.1f'):format(hp, maxHp, pct))
+    return math.max(0, math.min(100, pct))
 end
 
 local function UpdateHud()
@@ -28,12 +37,17 @@ RegisterNetEvent('hbs_ambulance:client:applyInjuryEffects', function()
     UpdateHud()
 end)
 
--- Periodic health tick (every 2 seconds while HUD is visible)
+-- Periodic health tick — 500ms so the bar responds quickly to damage
 CreateThread(function()
+    local lastPct = -1
     while true do
-        Wait(2000)
+        Wait(500)
         if HBSState.loaded then
-            SendNUIMessage({ action = 'updateHealth', value = GetHealthPct() })
+            local pct = GetHealthPct()
+            if pct ~= lastPct then
+                lastPct = pct
+                SendNUIMessage({ action = 'updateHealth', value = pct })
+            end
         end
     end
 end)
