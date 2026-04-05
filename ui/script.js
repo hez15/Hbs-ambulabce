@@ -229,7 +229,7 @@ function showResearchTerminal(data) {
     }
 
     document.getElementById('research-terminal').classList.remove('hidden');
-    SetNuiFocus(true, true);
+    // NUI focus is set by Lua when it sends this message (SetNuiFocus is a Lua native)
 }
 
 function hideResearchTerminal() {
