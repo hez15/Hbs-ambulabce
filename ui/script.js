@@ -31,6 +31,8 @@ window.addEventListener('message', function (e) {
             break;
         case 'withdrawalActive': setIcon('withdrawal', true);           break;
         case 'withdrawalEnded':  setIcon('withdrawal', false);          break;
+        case 'showResearchTerminal': showResearchTerminal(data); break;
+        case 'hideResearchTerminal': hideResearchTerminal();    break;
         case 'showDeathScreen':showDeathScreen(data.bleedoutMs, data.resourceName); break;
         case 'hideDeathScreen':hideDeathScreen();                     break;
         case 'updateTimer':    updateTimer(data.ms);                  break;
@@ -169,6 +171,78 @@ function hexToRgba(hex, alpha) {
     const g = parseInt(hex.slice(3,5), 16);
     const b = parseInt(hex.slice(5,7), 16);
     return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── Research Terminal ─────────────────────────────────────────────────────────
+
+const RT_ABILITY_ICONS = {
+    hands_only_revive:  '🖐',
+    rapid_revive:       '⚡',
+    patient_examine:    '🔍',
+    trauma_splint:      '🦴',
+    iv_therapy:         '💉',
+    addiction_therapy:  '💊',
+    adrenaline_revive:  '💥',
+    full_detox:         '🧪',
+    full_surgery:       '🔬',
+    mass_casualty:      '📡',
+};
+
+function showResearchTerminal(data) {
+    const { tier, xp, nextTier, nextXP, tierLabel, nextLabel, abilities } = data;
+
+    document.getElementById('rt-tier-badge').textContent = 'TIER ' + tier;
+    document.getElementById('rt-tier-label').textContent = tierLabel || 'EMT';
+
+    if (nextXP) {
+        document.getElementById('rt-xp-text').textContent  = 'XP: ' + xp + ' / ' + nextXP;
+        document.getElementById('rt-next-label').textContent = '→ ' + (nextLabel || '');
+        const pct = Math.max(0, Math.min(100, (xp / nextXP) * 100));
+        document.getElementById('rt-xp-bar-fill').style.width = pct + '%';
+    } else {
+        document.getElementById('rt-xp-text').textContent  = 'XP: ' + xp + '  (Max Tier)';
+        document.getElementById('rt-next-label').textContent = '✓ Mastered';
+        document.getElementById('rt-xp-bar-fill').style.width = '100%';
+    }
+
+    // Build ability rows
+    const list = document.getElementById('rt-abilities-list');
+    list.innerHTML = '';
+    if (abilities) {
+        abilities.forEach(ab => {
+            const row = document.createElement('div');
+            row.className = 'rt-ability ' + (ab.unlocked ? 'unlocked' : 'locked');
+
+            const icon = RT_ABILITY_ICONS[ab.id] || '🔒';
+            const badgeText = ab.unlocked ? 'UNLOCKED' : ('TIER ' + ab.requiredTier);
+
+            row.innerHTML = `
+                <div class="rt-ability-icon">${icon}</div>
+                <div class="rt-ability-body">
+                    <div class="rt-ability-name">${ab.label}</div>
+                    <div class="rt-ability-desc">${ab.desc || ''}</div>
+                </div>
+                <div class="rt-ability-badge">${badgeText}</div>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    document.getElementById('research-terminal').classList.remove('hidden');
+    SetNuiFocus(true, true);
+}
+
+function hideResearchTerminal() {
+    document.getElementById('research-terminal').classList.add('hidden');
+    fetch(`https://${_resourceName}/closeResearchTerminal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    }).catch(() => {});
+}
+
+function closeResearchTerminal() {
+    hideResearchTerminal();
 }
 
 // ── Health bar ────────────────────────────────────────────────────────────────

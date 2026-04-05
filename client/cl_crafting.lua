@@ -125,7 +125,7 @@ CreateThread(function()
     })
 end)
 
--- ── Research terminal ox_target ──────────────────────────────────────────────
+-- ── Research terminal NUI ─────────────────────────────────────────────────────
 
 local function OpenResearchMenu()
     if not HBSIsEMS() then
@@ -138,66 +138,43 @@ local function OpenResearchMenu()
     local tierCfg = HBSConfig.EMSResearch.tiers[tier]
     local nextCfg = HBSConfig.EMSResearch.tiers[tier + 1]
 
-    local xpLine = nextCfg
-        and ('XP: %d / %d → %s'):format(xp, nextCfg.xpRequired, nextCfg.label)
-        or  ('XP: %d  (Max Tier)'):format(xp)
-
-    -- Build ability list showing locked/unlocked per tier
-    local abilityOptions = {}
+    -- Build sorted ability list for NUI
+    local abilities = {}
     for abilityId, ab in pairs(HBSConfig.EMSResearch.abilities) do
-        local unlocked = tier >= ab.tier
-        abilityOptions[#abilityOptions + 1] = {
-            title       = ab.label,
-            description = ab.desc,
-            disabled    = true, -- read-only display
-            metadata    = {
-                { label = 'Tier Required', value = ab.tier },
-                { label = 'Status',        value = unlocked and 'Unlocked' or 'Locked' },
-            },
+        abilities[#abilities + 1] = {
+            id           = abilityId,
+            label        = ab.label,
+            desc         = ab.desc or '',
+            requiredTier = ab.tier,
+            unlocked     = tier >= ab.tier,
         }
     end
-
-    table.sort(abilityOptions, function(a, b)
-        local aLocked = a.metadata[2].value == 'Locked'
-        local bLocked = b.metadata[2].value == 'Locked'
-        if aLocked == bLocked then return (a.metadata[1].value or 0) < (b.metadata[1].value or 0) end
-        return not aLocked
+    -- Unlocked first, then sorted by required tier
+    table.sort(abilities, function(a, b)
+        if a.unlocked ~= b.unlocked then return a.unlocked end
+        return a.requiredTier < b.requiredTier
     end)
 
-    lib.registerContext({
-        id      = 'hbs_research_menu',
-        title   = ('EMS Research — %s'):format(tierCfg and tierCfg.label or 'EMT'),
-        menu    = nil,
-        options = {
-            {
-                title       = xpLine,
-                description = 'Your current research progress',
-                disabled    = true,
-            },
-            {
-                title    = 'View Abilities',
-                icon     = 'fa-solid fa-flask',
-                onSelect = function()
-                    lib.registerContext({
-                        id      = 'hbs_research_abilities',
-                        title   = 'Research Abilities',
-                        menu    = 'hbs_research_menu',
-                        options = abilityOptions,
-                    })
-                    lib.showContext('hbs_research_abilities')
-                end,
-            },
-            {
-                title    = 'Open Crafting Table',
-                icon     = 'fa-solid fa-syringe',
-                onSelect = function()
-                    CreateThread(OpenCraftingMenu)
-                end,
-            },
-        },
+    SendNUIMessage({
+        action     = 'showResearchTerminal',
+        tier       = tier,
+        xp         = xp,
+        tierLabel  = tierCfg and tierCfg.label or 'EMT',
+        nextTier   = nextCfg and nextCfg.tier or nil,
+        nextXP     = nextCfg and nextCfg.xpRequired or nil,
+        nextLabel  = nextCfg and nextCfg.label or nil,
+        abilities  = abilities,
     })
-    lib.showContext('hbs_research_menu')
+    SetNuiFocus(true, true)
+
+    HBSUtils.Debug('crafting', ('research terminal opened: tier=%d xp=%d'):format(tier, xp))
 end
+
+RegisterNuiCallback('closeResearchTerminal', function(_, cb)
+    SetNuiFocus(false, false)
+    HBSUtils.Debug('crafting', 'research terminal closed')
+    cb('ok')
+end)
 
 CreateThread(function()
     Wait(5000)
@@ -230,11 +207,4 @@ RegisterNetEvent('hbs_ambulance:client:craftResult', function(success, itemLabel
     end
 end)
 
--- ── Research update — refresh tier so menu reflects new unlocks ───────────────
-
-RegisterNetEvent('hbs_ambulance:client:emsResearchUpdate', function(data)
-    HBSState.emsTier   = data.tier
-    HBSState.emsXP     = data.xp
-    HBSState.emsUnlocks = data.unlocks or {}
-    TriggerEvent('hbs:client:hudUpdate')
-end)
+-- Note: emsResearchUpdate is handled in cl_ems.lua which syncs all HBSState fields.

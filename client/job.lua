@@ -76,6 +76,9 @@ end
 ---Check status of nearest player and show treatment menu.
 ---Intended to be invoked by client or server.
 RegisterNetEvent('hospital:client:CheckStatus', function()
+    -- Guard: only EMS on duty should see patient status
+    if not QBX.PlayerData.job or QBX.PlayerData.job.type ~= 'ems' then return end
+
     local player = GetClosestPlayer()
     if not player then
         exports.qbx_core:Notify(locale('error.no_player'), 'error')
