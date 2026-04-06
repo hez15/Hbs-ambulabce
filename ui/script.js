@@ -101,7 +101,7 @@ function startMinigame(cfg) {
         document.getElementById('mg-press-max').textContent = pressTarget;
         document.getElementById('mg-press-bar-fill').style.width = '0%';
         document.getElementById('mg-hint').textContent = 'Press [E] repeatedly for compressions';
-        document.getElementById('mg-rounds').textContent = '';
+        document.getElementById('mg-rounds').classList.add('hidden');
     } else {
         // Precision bar mode
         document.getElementById('mg-track-wrap').classList.remove('hidden');
@@ -112,6 +112,7 @@ function startMinigame(cfg) {
         document.getElementById('mg-cursor').style.boxShadow  = '0 0 6px rgba(255,255,255,0.8)';
         document.getElementById('mg-cursor').className = '';
         document.getElementById('mg-hint').textContent = 'Press [E] when the marker is inside the zone';
+        document.getElementById('mg-rounds').classList.remove('hidden');
         applyZone();
         updateRoundCounter();
         if (mgRaf) cancelAnimationFrame(mgRaf);
