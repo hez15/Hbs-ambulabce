@@ -126,3 +126,12 @@ end)
 RegisterNetEvent('hbs_ambulance:client:clearInjuries', function()
     TriggerEvent('hbs:client:clearInjuries')
 end)
+
+-- ── Health setter (server cannot reliably set player ped health in OAL mode) ──
+
+RegisterNetEvent('hbs_ambulance:client:setHealth', function(hp)
+    local ped = cache.ped
+    if not ped or ped == 0 then return end
+    local maxHp = GetEntityMaxHealth(ped)
+    SetEntityHealth(ped, math.max(101, math.min(maxHp, math.floor(hp))))
+end)

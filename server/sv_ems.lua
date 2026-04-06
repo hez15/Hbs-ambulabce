@@ -87,7 +87,7 @@ local function PerformRevive(reviverSrc, targetSrc)
     -- Adrenaline unlock
     if HasUnlock(reviverSrc, 'adrenaline_revive') then
         TriggerClientEvent('hbs_ambulance:client:addStress', targetSrc, -50)
-        SetEntityHealth(GetPlayerPed(targetSrc), 200)
+        TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 200)
     end
 
     -- Tell qbx_medical the player is revived (clears laststand/dead state + animation)
@@ -158,7 +158,7 @@ RegisterNetEvent('hbs_ambulance:server:minigameFailed', function(targetSrc, acti
     if not ped or ped == 0 then return end
     local penalty = actionType == 'revive' and 15 or 8
     local hp = GetEntityHealth(ped)
-    SetEntityHealth(ped, math.max(101, hp - penalty))
+    TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, math.max(101, hp - penalty))
     HBSLog('minigameFailed', ('action=%s target=%s penalty=%d'):format(actionType, tostring(targetSrc), penalty))
 end)
 
@@ -205,7 +205,7 @@ RegisterNetEvent('hbs_ambulance:server:emsTreat', function(targetSrc)
 
     if HasUnlock(src, 'iv_therapy') then
         local ped = GetPlayerPed(targetSrc)
-        SetEntityHealth(ped, math.min(200, GetEntityHealth(ped) + 75))
+        TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, math.min(200, GetEntityHealth(ped) + 75))
     end
 
     local updated = DB.LoadInjuries(cid)
@@ -347,6 +347,6 @@ RegisterNetEvent('hbs_ambulance:server:fullSurgery', function(targetSrc)
     DB.ClearInjuries(cid)
     HBS.Set(targetSrc, 'injuries', {})
     TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc)
-    SetEntityHealth(GetPlayerPed(targetSrc), 200)
+    TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 200)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat * 3)
 end)
