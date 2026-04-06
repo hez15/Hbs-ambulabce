@@ -231,12 +231,35 @@ RegisterNetEvent('hbs_ambulance:server:setCarried', function(targetSrc, isCarrie
     HBS.Set(targetSrc, 'isCarried', isCarried)
 end)
 
+-- ── Player disconnect — clear injuries if healthy ─────────────────────────
+-- Injuries are only persistent across sessions if the player was downed
+-- when they left. Disconnecting while healthy means the injuries are stale
+-- (healed via items, etc.) and should not reload on next join.
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    if DownedPlayers[src] then
+        -- Was downed when they quit — keep DB injuries so they relog downed
+        HBSLog('playerDropped', ('src=%s was downed — injuries kept in DB'):format(tostring(src)))
+        return
+    end
+    local cid = HBSUtils.GetCitizenId(src)
+    if cid then
+        DB.ClearInjuries(cid)
+        HBSLog('playerDropped', ('src=%s was healthy — DB injuries cleared'):format(tostring(src)))
+    end
+    DownedPlayers[src] = nil
+end)
+
 -- ── Admin /revive ─────────────────────────────────────────────────────────
 
 RegisterCommand('revive', function(src, args)
-    -- Console (src=0) or EMS job in-game
-    if src ~= 0 and not HBSUtils.IsEMS(src) then
-        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Only EMS can use this.')
+    -- Allow: console, group.admin ace, command.revive ace, or EMS job
+    local isPrivileged = src == 0
+        or IsPlayerAceAllowed(src, 'group.admin')
+        or IsPlayerAceAllowed(src, 'command.revive')
+    if not isPrivileged and not HBSUtils.IsEMS(src) then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'No permission to use this command.')
         return
     end
     local targetId = tonumber(args[1]) or src
