@@ -109,8 +109,18 @@ CreateThread(function()
     end
 end)
 
-AddEventHandler('hbs:client:applyInjuryEffects',                          ApplyInjuryEffects)
-RegisterNetEvent('hbs_ambulance:client:applyInjuryEffects',               ApplyInjuryEffects)
+AddEventHandler('hbs:client:applyInjuryEffects', ApplyInjuryEffects)
+
+-- Server passes updated injuries so we sync HBSState before recalculating effects.
+-- Without this, ApplyInjuryEffects reads stale local data and the heal has no visual effect.
+RegisterNetEvent('hbs_ambulance:client:applyInjuryEffects', function(injuries)
+    if injuries ~= nil then
+        HBSState.injuries = injuries
+        HBS.SetLocal('injuries', injuries)
+        TriggerEvent('hbs:client:hudUpdate')
+    end
+    ApplyInjuryEffects()
+end)
 
 -- ── Clear injuries (on revive / respawn) ─────────────────────────────────
 

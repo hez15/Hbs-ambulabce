@@ -210,7 +210,8 @@ RegisterNetEvent('hbs_ambulance:server:emsTreat', function(targetSrc)
 
     local updated = DB.LoadInjuries(cid)
     HBS.Set(targetSrc, 'injuries', updated)
-    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc)
+    -- Pass updated injuries so the client can sync HBSState.injuries before applying effects
+    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc, updated)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
 end)
 
