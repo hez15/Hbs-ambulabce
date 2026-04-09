@@ -26,6 +26,16 @@ html, body {
     padding: 10px 10px 8px;
     /* backdrop-filter removed — CEF/FiveM renders it as a solid black box */
     user-select: none;
+    /* Fade in/out instead of instant show/hide */
+    transition: opacity 0.4s ease;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#medical-hud.hidden {
+    display: block !important;  /* keep in DOM for transition */
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Body SVG diagram */
@@ -735,6 +745,32 @@ html, body {
 
 .death-btn:active {
     transform: translateY(0);
+}
+
+.death-btn.ems-btn {
+    background: rgba(220, 60, 20, 0.20);
+    border-color: rgba(220, 60, 20, 0.50);
+    color: #f97316;
+    margin-bottom: 8px;
+    display: block;
+    width: 100%;
+}
+
+.death-btn.ems-btn:hover:not(:disabled) {
+    background: rgba(220, 60, 20, 0.35);
+    border-color: rgba(220, 60, 20, 0.80);
+}
+
+.death-btn.ems-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.death-btn.ems-btn.ems-notified {
+    background: rgba(30, 160, 30, 0.20);
+    border-color: rgba(30, 200, 30, 0.50);
+    color: #4ade80;
 }
 
 .death-btn:disabled,

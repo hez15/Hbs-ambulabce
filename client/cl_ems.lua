@@ -586,6 +586,29 @@ RegisterNetEvent('hbs_ambulance:client:examineResult', function(result)
         addRows[1] = { title = 'No substance dependency', disabled = true }
     end
 
+    -- Build disease rows (with treat option)
+    local diseaseRows = {}
+    local hasDiseases = false
+    local _targetSrc  = result.targetSrc  -- stored by examinePlayer event below
+    for disease, stage in pairs(result.diseases or {}) do
+        hasDiseases = true
+        local cfg   = HBSConfig.Diseases and HBSConfig.Diseases[disease]
+        local label = cfg and cfg.label or disease
+        local maxSt = cfg and cfg.stages or 3
+        diseaseRows[#diseaseRows + 1] = {
+            title       = label,
+            description = ('Stage %d / %d'):format(stage, maxSt),
+            icon        = 'fas fa-virus',
+            onSelect    = _targetSrc and function()
+                TriggerServerEvent('hbs_ambulance:server:treatDisease', _targetSrc, disease)
+            end or nil,
+            disabled    = not _targetSrc,
+        }
+    end
+    if not hasDiseases then
+        diseaseRows[1] = { title = 'No active diseases', disabled = true }
+    end
+
     lib.registerContext({
         id      = 'hbs_examine_result',
         title   = ('Patient: %s'):format(result.playerName or 'Unknown'),
@@ -605,6 +628,14 @@ RegisterNetEvent('hbs_ambulance:client:examineResult', function(result)
                 onSelect = function()
                     lib.registerContext({ id = 'hbs_examine_addiction', title = 'Substance Dependency', menu = 'hbs_examine_result', options = addRows })
                     lib.showContext('hbs_examine_addiction')
+                end,
+            },
+            {
+                title    = 'Diseases',
+                icon     = 'fas fa-virus',
+                onSelect = function()
+                    lib.registerContext({ id = 'hbs_examine_diseases', title = 'Diseases', menu = 'hbs_examine_result', options = diseaseRows })
+                    lib.showContext('hbs_examine_diseases')
                 end,
             },
         },

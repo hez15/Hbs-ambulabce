@@ -42,6 +42,7 @@ client_scripts {
     'client/cl_addiction.lua',
     'client/cl_ems.lua',
     'client/cl_crafting.lua',
+    'client/cl_disease.lua',
     'client/cl_drugs.lua',
     -- qbx_ambulancejob original files
     'client/main.lua',
@@ -64,7 +65,7 @@ server_scripts {
     'server/sv_items.lua',
     'server/sv_stress.lua',
     'server/sv_addiction.lua',
-    'server/sv_crafting.lua',
+    'server/sv_disease.lua',
     'server/sv_drugscompat.lua',
     -- qbx_ambulancejob original files
     'server/main.lua',

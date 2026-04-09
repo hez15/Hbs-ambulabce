@@ -35,6 +35,7 @@ window.addEventListener('message', function (e) {
         case 'hideResearchTerminal': hideResearchTerminal();    break;
         case 'showDeathScreen':showDeathScreen(data.bleedoutMs, data.resourceName); break;
         case 'hideDeathScreen':hideDeathScreen();                     break;
+        case 'callEMSResult':  onCallEMSResult(data.success, data.cooldown); break;
         case 'updateTimer':    updateTimer(data.ms);                  break;
         case 'showForceRespawn': showForceRespawn();                  break;
         case 'setIcon':        setIcon(data.icon, data.visible);      break;
@@ -445,6 +446,51 @@ function updateTimer(remainingMs) {
     if (ms <= 0) {
         stopTimer();
         showForceRespawn();
+    }
+}
+
+// ── Call EMS button ───────────────────────────────────────────────────────────
+
+let emsCallTimer = null;
+
+function callEMS() {
+    const btn = document.getElementById('btn-call-ems');
+    if (!btn || btn.disabled) return;
+
+    btn.disabled = true;
+    btn.textContent = '🚨 Calling...';
+
+    fetch(`https://${_resourceName}/callEMS`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    }).catch(() => {});
+}
+
+function onCallEMSResult(success, cooldownSec) {
+    const btn = document.getElementById('btn-call-ems');
+    if (!btn) return;
+
+    if (success) {
+        btn.textContent = '✓ EMS Notified';
+        btn.classList.add('ems-notified');
+        // Re-enable after cooldown
+        if (emsCallTimer) clearTimeout(emsCallTimer);
+        emsCallTimer = setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = '🚨 Call EMS';
+            btn.classList.remove('ems-notified');
+        }, (cooldownSec || 120) * 1000);
+    } else {
+        // On cooldown — show remaining time then re-enable
+        const remaining = cooldownSec || 120;
+        btn.textContent = `⏳ Cooldown (${remaining}s)`;
+        if (emsCallTimer) clearTimeout(emsCallTimer);
+        emsCallTimer = setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = '🚨 Call EMS';
+            btn.classList.remove('ems-notified');
+        }, remaining * 1000);
     }
 }
 

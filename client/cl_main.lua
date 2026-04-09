@@ -1,13 +1,14 @@
 -- HBS bootstrap: shared client state, framework hooks, helpers
 
 HBSState = {
-    isDowned   = false,
-    injuries   = {},
-    stress     = 0,
-    inPain     = false,
-    bloodloss  = false,
-    addiction  = {},
-    loaded     = false,
+    isDowned    = false,
+    injuries    = {},
+    stress      = 0,
+    inPain      = false,
+    bloodloss   = false,
+    addiction   = {},
+    diseases    = {},
+    loaded      = false,
     emsResearch = { tier = 1, xp = 0, unlocks = {} },
 }
 
@@ -61,6 +62,7 @@ local function OnPlayerLoaded()
         HBSState.injuries    = data.injuries  or {}
         HBSState.stress      = data.stress    or 0
         HBSState.addiction   = data.addiction or {}
+        HBSState.diseases    = data.diseases  or {}
         HBSState.emsResearch = research
         HBSState.emsTier     = research.tier    or 1
         HBSState.emsXP       = research.xp      or 0
@@ -71,6 +73,7 @@ local function OnPlayerLoaded()
         HBS.SetLocal('injuries',  HBSState.injuries)
         HBS.SetLocal('stress',    HBSState.stress)
         HBS.SetLocal('addiction', HBSState.addiction)
+        HBS.SetLocal('diseases',  HBSState.diseases)
 
         HBSUtils.Debug('client', ('state loaded: tier=%d xp=%d stress=%d'):format(
             HBSState.emsTier, HBSState.emsXP, HBSState.stress))
@@ -85,7 +88,8 @@ local function OnPlayerUnloaded()
     HBSState = {
         isDowned = false, injuries = {}, stress = 0,
         inPain = false, bloodloss = false, addiction = {},
-        loaded = false, emsResearch = { tier = 1, xp = 0, unlocks = {} },
+        diseases = {}, loaded = false,
+        emsResearch = { tier = 1, xp = 0, unlocks = {} },
     }
     SendNUIMessage({ action = 'hideHud' })
 end

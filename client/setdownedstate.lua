@@ -125,6 +125,17 @@ RegisterNetEvent('hbs_ambulance:client:revived', function()
     end)
 end)
 
+-- ── NUI Call EMS button ───────────────────────────────────────────────────
+
+RegisterNuiCallback('callEMS', function(_, cb)
+    TriggerServerEvent('hbs_ambulance:server:callEMS')
+    cb('ok')
+end)
+
+RegisterNetEvent('hbs_ambulance:client:callEMSResult', function(success, remaining)
+    SendNUIMessage({ action = 'callEMSResult', success = success, cooldown = remaining or 120 })
+end)
+
 -- ── NUI respawn button ────────────────────────────────────────────────────
 
 RegisterNuiCallback('respawn', function(data, cb)

@@ -2,7 +2,7 @@
 
 -- ── Unlock helper ─────────────────────────────────────────────────────────
 
-local function HasUnlock(src, ability)
+function HasUnlock(src, ability)
     if not src or src <= 0 then return false end
     local unlocks = HBS.Get(src, 'emsUnlocks') or {}
     if HBSUtils.TableContains(unlocks, ability) then
@@ -252,12 +252,15 @@ RegisterNetEvent('hbs_ambulance:server:examinePlayer', function(targetSrc)
     local injuries  = DB.LoadInjuries(cid)
     local stress    = DB.LoadStress(cid)
     local addiction = DB.LoadAddiction(cid)
+    local diseases  = DB.LoadDiseases(cid)
 
     TriggerClientEvent('hbs_ambulance:client:examineResult', src, {
         playerName = GetPlayerName(targetSrc),
+        targetSrc  = targetSrc,
         injuries   = injuries,
         stress     = stress,
         addiction  = addiction,
+        diseases   = diseases,
     })
 end)
 

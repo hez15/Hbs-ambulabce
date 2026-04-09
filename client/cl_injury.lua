@@ -5,6 +5,25 @@ local lastHealth = 200
 -- Reset baseline health on load so first tick doesn't create false injuries
 AddEventHandler('hbs:client:stateLoaded', function()
     lastHealth = GetEntityHealth(cache.ped)
+    -- Suppress collision-triggered ragdoll (getting hit by cars, etc.)
+    SetPedRagdollOnCollision(cache.ped, false)
+end)
+
+-- ── Ragdoll limiter ───────────────────────────────────────────────────────
+-- Allows a brief 500ms stumble when shot, then forces recovery upright.
+-- Never cancels ragdoll while downed (injury writhe should be preserved).
+
+CreateThread(function()
+    while true do
+        Wait(0)
+        local ped = cache.ped
+        if IsPedRagdoll(ped) and not HBSState.isDowned then
+            Wait(500)
+            if IsPedRagdoll(ped) and not HBSState.isDowned then
+                SetPedToRagdoll(ped, 0, 0, 0, false, false, false)
+            end
+        end
+    end
 end)
 
 -- ── Damage detection loop ─────────────────────────────────────────────────

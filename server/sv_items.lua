@@ -79,16 +79,9 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
         DB.SaveStress(cid, math.max(0, stress - cfg.stressReduce))
     end
 
-    -- Addiction
+    -- Addiction — use central RollAddiction (defined in sv_addiction.lua)
     if cfg.addictive and cfg.substance then
-        local addiction  = DB.LoadAddiction(cid)
-        local curLevel   = addiction[cfg.substance] or 0
-        local chance     = cfg.addictChance[curLevel] or 0.05
-        if math.random() < chance then
-            local newLevel = math.min(4, curLevel + 1)
-            DB.SaveAddiction(cid, cfg.substance, newLevel)
-            TriggerClientEvent('hbs_ambulance:client:addictionUpdate', src, DB.LoadAddiction(cid))
-        end
+        RollAddiction(src, cfg.substance)
     end
 
     -- Withdrawal relief
@@ -160,16 +153,9 @@ RegisterNetEvent('hbs_ambulance:server:useDrug', function(drugName)
         TriggerClientEvent('hbs_ambulance:client:addStress', src, -cfg.effects.stressReduce)
     end
 
-    -- Addiction roll
+    -- Addiction roll — use central RollAddiction (defined in sv_addiction.lua)
     if cfg.addictive and cfg.substance then
-        local addiction = DB.LoadAddiction(cid)
-        local curLevel  = addiction[cfg.substance] or 0
-        local chance    = cfg.addictChance and cfg.addictChance[curLevel] or 0.10
-        if math.random() < chance then
-            local newLevel = math.min(4, curLevel + 1)
-            DB.SaveAddiction(cid, cfg.substance, newLevel)
-            TriggerClientEvent('hbs_ambulance:client:addictionUpdate', src, DB.LoadAddiction(cid))
-        end
+        RollAddiction(src, cfg.substance)
     end
 
     -- Tell client to apply high effect

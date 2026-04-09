@@ -1,75 +1,34 @@
--- HBS Drug compatibility — hooks into your existing drug script.
+-- HBS Drug compatibility — config-driven hooks into external drug scripts.
 -- We do NOT handle drug use/effects here; your drug script does that.
--- This file ONLY applies HBS addiction rolls + withdrawal on drug use.
+-- This file ONLY applies HBS addiction rolls on drug consumption events.
+--
+-- To hook a new drug script: add an entry to HBSConfig.SubstanceEventHooks in config.lua.
+-- No changes to this file are needed.
 
-local ServerConfig = lib.load('config/server')
+-- ── Register all configured event hooks ───────────────────────────────────────
 
--- ── Addiction roll helper (shared with sv_items) ──────────────────────────────
+local hookCount = 0
 
-local function RollAddiction(src, drugKey)
-    local cfg = HBSConfig.Drugs[drugKey]
-    if not cfg or not cfg.addictive or not cfg.substance then return end
-
-    local cid = HBSUtils.GetCitizenId(src)
-    if not cid then return end
-
-    local addiction = DB.LoadAddiction(cid)
-    local curLevel  = addiction[cfg.substance] or 0
-    local chance    = cfg.addictChance and cfg.addictChance[curLevel] or 0.10
-
-    HBSLog('drugscompat', ('roll: cid=%s drug=%s substance=%s curLevel=%d chance=%.2f'):format(
-        cid, drugKey, cfg.substance, curLevel, chance))
-
-    if math.random() < chance then
-        local newLevel = math.min(4, curLevel + 1)
-        DB.SaveAddiction(cid, cfg.substance, newLevel)
-        local updated = DB.LoadAddiction(cid)
-        HBS.Set(src, 'addiction', updated)
-        TriggerClientEvent('hbs_ambulance:client:addictionUpdate', src, updated)
-
-        HBSLog('drugscompat', ('addiction increased: cid=%s %s %d→%d'):format(cid, cfg.substance, curLevel, newLevel))
-
-        -- Notify player if addiction increased
-        if newLevel > curLevel then
-            local label = HBSConfig.Addiction.levelLabels[newLevel] or 'Unknown'
-            TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
-                ('You feel a growing dependence. (%s: %s)'):format(cfg.substance, label))
-        end
+for eventName, resolver in pairs(HBSConfig.SubstanceEventHooks or {}) do
+    if type(resolver) == 'function' then
+        AddEventHandler(eventName, function(...)
+            local src = source
+            -- resolver receives (src, ...) and returns a substance/item key or nil
+            local substanceKey = resolver(src, ...)
+            if substanceKey and type(substanceKey) == 'string' then
+                RollAddiction(src, substanceKey)
+                HBSLog('drugscompat', ('hook "%s": src=%s substance=%s'):format(eventName, tostring(src), substanceKey))
+            end
+        end)
+        hookCount = hookCount + 1
+        HBSLog('drugscompat', ('registered hook: "%s"'):format(eventName))
     else
-        HBSLog('drugscompat', ('no addiction increase: cid=%s %s (rolled above %.2f)'):format(cid, cfg.substance, chance))
+        HBSLog('drugscompat', ('WARNING: hook for "%s" is not a function, skipped'):format(eventName))
     end
-
-    -- Also apply stress reduction client-side if defined
-    if cfg.effects and cfg.effects.stressReduce then
-        TriggerClientEvent('hbs_ambulance:client:addStress', src, -cfg.effects.stressReduce)
-        local stress = DB.LoadStress(cid)
-        DB.SaveStress(cid, math.max(0, stress - cfg.effects.stressReduce))
-    end
-
-    -- Tell client to start the high (visual effects, speed boost etc.)
-    TriggerClientEvent('hbs_ambulance:client:drugEffect', src, drugKey)
 end
 
--- ── Hook into drug script event ───────────────────────────────────────────────
-
-local eventName = ServerConfig and ServerConfig.drugConsumedEvent
-local nameMap   = (ServerConfig and ServerConfig.drugNameMap) or {}
-
-if eventName then
-    -- Listen for the drug script's consumed event
-    -- Expected args: (source, itemName)
-    AddEventHandler(eventName, function(src, itemName)
-        if not src or not itemName then return end
-
-        -- Resolve name through map first, then try direct match
-        local drugKey = nameMap[itemName] or nameMap[itemName:lower()] or itemName:lower()
-
-        if HBSConfig.Drugs[drugKey] then
-            RollAddiction(src, drugKey)
-        end
-    end)
-
-    HBSLog('drugscompat', ('listening on "%s"'):format(eventName))
+if hookCount == 0 then
+    HBSLog('drugscompat', 'no SubstanceEventHooks configured — external drug scripts must call exports.hbs_ambulance:consumeSubstance()')
 else
-    HBSLog('drugscompat', 'no drugConsumedEvent set — using HBS item system only.')
+    HBSLog('drugscompat', ('registered %d event hook(s)'):format(hookCount))
 end

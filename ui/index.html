@@ -41,9 +41,10 @@
     </div>
 
     <div id="status-icons">
-        <span id="icon-bloodloss" class="icon hidden" title="Bloodloss">🩸</span>
-        <span id="icon-pain"      class="icon hidden" title="Pain Suppressed">💊</span>
+        <span id="icon-bloodloss"  class="icon hidden" title="Bloodloss">🩸</span>
+        <span id="icon-pain"       class="icon hidden" title="Pain Suppressed">💊</span>
         <span id="icon-withdrawal" class="icon hidden" title="Withdrawal">🥵</span>
+        <span id="icon-disease"    class="icon hidden" title="Disease">🦠</span>
     </div>
 </div>
 
@@ -127,6 +128,7 @@
             <textarea id="will-input" maxlength="280" placeholder="Leave your last words..."></textarea>
         </div>
         <div id="btn-block">
+            <button class="death-btn ems-btn" id="btn-call-ems" onclick="callEMS()">🚨 Call EMS</button>
             <button class="death-btn" id="btn-respawn" onclick="onRespawn()">Respawn at Hospital</button>
         </div>
         <div id="force-block" class="hidden">

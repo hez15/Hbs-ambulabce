@@ -57,14 +57,19 @@ local MIGRATIONS = {
         },
     },
 
-    -- Future migrations go here, e.g.:
-    -- {
-    --     version = 2,
-    --     label   = 'add patient records table',
-    --     up = {
-    --         [[CREATE TABLE IF NOT EXISTS `hbs_patient_records` (...)]],
-    --     },
-    -- },
+    {
+        version = 2,
+        label   = 'disease tracking table',
+        up      = {
+            [[CREATE TABLE IF NOT EXISTS `hbs_diseases` (
+                `citizenid`     VARCHAR(50) NOT NULL,
+                `disease`       VARCHAR(50) NOT NULL,
+                `stage`         TINYINT     NOT NULL DEFAULT 1,
+                `contracted_at` TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`citizenid`, `disease`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        },
+    },
 }
 
 local LATEST_VERSION = MIGRATIONS[#MIGRATIONS].version

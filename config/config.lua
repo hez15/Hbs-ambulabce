@@ -115,23 +115,6 @@ HBSConfig.Stress = {
 }
 
 -- ── Addiction System ──────────────────────────────────────────────────────────
--- How addiction works:
---   1. Addictive items (morphine, painkiller) have a per-level chance to
---      increase addiction when used. Level 0 = no addiction yet.
---   2. Addiction builds from level 0 → 4 over repeated use.
---   3. After withdrawalDelay minutes from last use, withdrawal effects fire
---      every withdrawalTickRate seconds until addiction reaches 0.
---   4. Players self-treat with methadone (reduces 1 level) or painkiller
---      (suppresses withdrawal temporarily).
---   5. EMS can administer detox (Tier 3 unlock) or full detox (Tier 4).
---
--- Addictive consumables (defined in MedicalItems below):
---   • morphine    — high chance, escalates fast, very effective painkiller
---   • painkiller  — lower chance, slow escalation, also provides withdrawal relief
---
--- Treatment consumables:
---   • methadone   — reduces addiction level by 1, no withdrawal relief of its own
---   • painkiller  — withdrawal relief only (doesn't reduce addiction level)
 
 HBSConfig.Addiction = {
     withdrawalDelay    = 30,  -- minutes after last use before withdrawal starts
@@ -146,15 +129,79 @@ HBSConfig.Addiction = {
         [3] = { handTremors = true, speedMult = 0.90, visualDistortion = true },
         [4] = { handTremors = true, speedMult = 0.80, visualDistortion = true, vomit = true, healthDrain = 0.5 },
     },
+}
 
-    -- Addiction chance per use at each current level (0–4)
-    -- Format: item name = { [currentLevel] = chance (0.0–1.0) }
-    -- These mirror the per-item addictChance tables in MedicalItems below.
-    -- Defined here for reference — actual values live on each item.
-    chanceReference = {
-        morphine   = { [0]=0.10, [1]=0.25, [2]=0.40, [3]=0.60, [4]=0.80 },
-        painkiller = { [0]=0.05, [1]=0.15, [2]=0.25, [3]=0.40, [4]=0.60 },
+-- ── Substances ────────────────────────────────────────────────────────────────
+-- Single source of truth for ALL addictive substances.
+--
+-- itemAliases: all ox_inventory item names that should trigger this substance.
+--   Used for auto-mapping from external drug scripts.
+-- addictChance: per-current-level (0–4) roll chance on each use.
+--
+-- To add a new substance (e.g. whippets):
+--   1. Add an entry here.
+--   2. Add the item to ox_inventory.
+--   3. Optionally add drug effects to HBSConfig.Drugs.
+-- No other files need to change.
+
+HBSConfig.Substances = {
+    cocaine    = {
+        label        = 'Cocaine',
+        addictChance = { [0]=0.20, [1]=0.40, [2]=0.60, [3]=0.80, [4]=0.95 },
+        itemAliases  = { 'cocaine', 'coke_bag', 'coke' },
     },
+    meth       = {
+        label        = 'Methamphetamine',
+        addictChance = { [0]=0.30, [1]=0.55, [2]=0.75, [3]=0.90, [4]=0.98 },
+        itemAliases  = { 'meth', 'methamphetamine', 'crystal_meth' },
+    },
+    heroin     = {
+        label        = 'Heroin',
+        addictChance = { [0]=0.35, [1]=0.60, [2]=0.80, [3]=0.92, [4]=0.99 },
+        itemAliases  = { 'heroin', 'smack' },
+    },
+    weed       = {
+        label        = 'Cannabis',
+        addictChance = { [0]=0.03, [1]=0.08, [2]=0.15, [3]=0.25, [4]=0.40 },
+        itemAliases  = { 'weed', 'marijuana', 'joint', 'cannabis' },
+    },
+    ecstasy    = {
+        label        = 'Ecstasy',
+        addictChance = { [0]=0.10, [1]=0.25, [2]=0.45, [3]=0.65, [4]=0.85 },
+        itemAliases  = { 'ecstasy', 'mdma', 'xtc', 'pill' },
+    },
+    morphine   = {
+        label        = 'Morphine',
+        addictChance = { [0]=0.10, [1]=0.25, [2]=0.40, [3]=0.60, [4]=0.80 },
+        itemAliases  = { 'morphine' },
+    },
+    painkiller = {
+        label        = 'Painkiller',
+        addictChance = { [0]=0.05, [1]=0.15, [2]=0.25, [3]=0.40, [4]=0.60 },
+        itemAliases  = { 'painkiller' },
+    },
+    nitrous    = {
+        label        = 'Nitrous (Whippets)',
+        addictChance = { [0]=0.05, [1]=0.10, [2]=0.20, [3]=0.35, [4]=0.55 },
+        itemAliases  = { 'whippet', 'nitrous', 'nos' },
+    },
+}
+
+-- ── SubstanceEventHooks ───────────────────────────────────────────────────────
+-- Config-driven hooks into external drug script events.
+-- Key   = the server event name fired by your drug script when a player uses a drug.
+-- Value = function(src, ...) that receives the event args and returns a substance key
+--         (matching HBSConfig.Substances) or nil to skip.
+--
+-- Example for md-drugs:
+--   ['md-drugs:server:drugConsumed'] = function(src, itemName) return itemName end,
+--
+-- Example for a script that passes drugType as second arg:
+--   ['myDrugScript:server:used'] = function(src, drugType, qty) return drugType end,
+
+HBSConfig.SubstanceEventHooks = {
+    -- Uncomment and adjust for your drug script:
+    -- ['md-drugs:server:drugConsumed'] = function(src, itemName) return itemName end,
 }
 
 HBSConfig.MedicalItems = {
@@ -233,136 +280,37 @@ HBSConfig.EMSResearch = {
     },
 }
 
--- ── Crafting ──────────────────────────────────────────────────────────────────
--- Ingredients are ox_inventory item names
--- tier = minimum research tier required
--- craftTime = seconds for progress circle
+-- ── Diseases ──────────────────────────────────────────────────────────────────
+-- Each disease has configurable stages with per-stage symptoms.
+-- Set spreadRadius = 0 to disable proximity spread.
+-- treatItem: ox_inventory item name an EMS must use to treat this disease.
+-- Set to nil to make the disease untreatable (natural progression only).
 
-HBSConfig.Crafting = {
-    -- ── Tier 1: EMT ─────────────────────────────────────────────────────────
-    bandage = {
-        label     = 'Bandage',
-        tier      = 1,
-        craftTime = 10,
-        output    = { item = 'bandage', amount = 3 },
-        ingredients = {
-            { item = 'med_gauze',   amount = 2 },
-            { item = 'med_tape',    amount = 1 },
+HBSConfig.Diseases = {
+    flu = {
+        label        = 'Influenza',
+        stages       = 3,
+        spreadRadius = 5.0,    -- metres, players within this range can contract it
+        spreadChance = 0.015,  -- per proximity tick (every 60s)
+        progressTime = 600,    -- seconds per stage advancement
+        treatItem    = 'antibiotic',
+        symptoms = {
+            [1] = { cough=true, speedMult=0.97 },
+            [2] = { cough=true, speedMult=0.93, healthDrain=0.5 },
+            [3] = { cough=true, speedMult=0.88, healthDrain=1.5, screenShake=true },
         },
     },
-    painkiller = {
-        label     = 'Painkiller',
-        tier      = 1,
-        craftTime = 8,
-        output    = { item = 'painkiller', amount = 2 },
-        ingredients = {
-            { item = 'med_pills',   amount = 3 },
+    infection = {
+        label        = 'Wound Infection',
+        stages       = 2,
+        spreadRadius = 0,      -- no person-to-person spread
+        progressTime = 900,
+        treatItem    = 'antibiotic',
+        symptoms = {
+            [1] = { healthDrain=0.5 },
+            [2] = { healthDrain=2.0, fever=true },
         },
     },
-
-    -- ── Tier 2: Paramedic ────────────────────────────────────────────────────
-    splint = {
-        label     = 'Splint',
-        tier      = 2,
-        craftTime = 15,
-        output    = { item = 'splint', amount = 1 },
-        ingredients = {
-            { item = 'med_gauze',   amount = 3 },
-            { item = 'med_tape',    amount = 2 },
-            { item = 'med_rod',     amount = 1 },
-        },
-    },
-    morphine = {
-        label     = 'Morphine Shot',
-        tier      = 2,
-        craftTime = 20,
-        output    = { item = 'morphine', amount = 1 },
-        ingredients = {
-            { item = 'med_syringe', amount = 1 },
-            { item = 'med_opioid',  amount = 2 },
-        },
-    },
-
-    -- ── Tier 3: Senior Paramedic ─────────────────────────────────────────────
-    firstaidkit = {
-        label     = 'First Aid Kit',
-        tier      = 3,
-        craftTime = 25,
-        output    = { item = 'firstaidkit', amount = 1 },
-        ingredients = {
-            { item = 'bandage',     amount = 2 },
-            { item = 'med_gauze',   amount = 4 },
-            { item = 'med_tape',    amount = 2 },
-            { item = 'med_pills',   amount = 2 },
-        },
-    },
-    methadone = {
-        label     = 'Methadone (Detox)',
-        tier      = 3,
-        craftTime = 30,
-        output    = { item = 'methadone', amount = 2 },
-        ingredients = {
-            { item = 'med_syringe', amount = 1 },
-            { item = 'med_detox',   amount = 3 },
-        },
-    },
-    bloodbag = {
-        label     = 'Blood Bag',
-        tier      = 3,
-        craftTime = 20,
-        output    = { item = 'bloodbag', amount = 1 },
-        ingredients = {
-            { item = 'med_bloodpack', amount = 1 },
-            { item = 'med_tube',      amount = 1 },
-        },
-    },
-
-    -- ── Tier 4: Lead Medic ───────────────────────────────────────────────────
-    defibrillator = {
-        label     = 'Defibrillator Charge',
-        tier      = 4,
-        craftTime = 40,
-        output    = { item = 'defibrillator', amount = 1 },
-        ingredients = {
-            { item = 'med_defib_pad', amount = 2 },
-            { item = 'med_battery',   amount = 1 },
-            { item = 'med_tube',      amount = 1 },
-        },
-    },
-    surgical_kit = {
-        label     = 'Surgical Kit',
-        tier      = 4,
-        craftTime = 45,
-        output    = { item = 'surgical_kit', amount = 1 },
-        ingredients = {
-            { item = 'med_scalpel',   amount = 1 },
-            { item = 'med_gauze',     amount = 5 },
-            { item = 'med_syringe',   amount = 2 },
-            { item = 'med_opioid',    amount = 3 },
-        },
-    },
-
-    -- ── Tier 5: Chief of Medicine ────────────────────────────────────────────
-    advanced_surgical_pack = {
-        label     = 'Advanced Surgical Pack',
-        tier      = 5,
-        craftTime = 60,
-        output    = { item = 'advanced_surgical_pack', amount = 1 },
-        ingredients = {
-            { item = 'surgical_kit',  amount = 1 },
-            { item = 'bloodbag',      amount = 1 },
-            { item = 'morphine',      amount = 1 },
-            { item = 'med_detox',     amount = 2 },
-        },
-    },
-}
-
--- Crafting table location (ox_target zone at EMS base)
-HBSConfig.CraftingTable = {
-    coords   = vector3(297.7, -584.5, 43.3), -- Sandy Shores Medical (adjust to your server)
-    heading  = 0.0,
-    label    = 'Medical Crafting Table',
-    radius   = 1.5,
 }
 
 -- Research terminal location (ox_target zone at EMS base)

@@ -89,10 +89,12 @@ HBS.Keys = {
     injuries   = 'hbs:injuries',
     stress     = 'hbs:stress',
     addiction  = 'hbs:addiction',
+    diseases   = 'hbs:diseases',
     triage     = 'hbs:triage',
     emsTier    = 'hbs:emsTier',
     emsXP      = 'hbs:emsXP',
     emsUnlocks = 'hbs:emsUnlocks',
+    isCarried  = 'hbs:isCarried',
 }
 
 function HBS.SetLocal(key, value)

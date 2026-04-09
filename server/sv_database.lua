@@ -69,3 +69,29 @@ function DB.SaveEMSResearch(cid, tier, xp, unlocks)
     MySQL.query.await('INSERT INTO hbs_ems_research (citizenid, tier, xp, unlocks) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE tier = ?, xp = ?, unlocks = ?',
         { cid, tier, xp, unlocksStr, tier, xp, unlocksStr })
 end
+
+-- ── Diseases ──────────────────────────────────────────────────────────────
+
+function DB.LoadDiseases(cid)
+    local rows = MySQL.query.await('SELECT disease, stage FROM hbs_diseases WHERE citizenid = ?', { cid })
+    local result = {}
+    for _, row in ipairs(rows or {}) do
+        result[row.disease] = row.stage
+    end
+    return result
+end
+
+function DB.SaveDisease(cid, disease, stage)
+    MySQL.query.await(
+        'INSERT INTO hbs_diseases (citizenid, disease, stage) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE stage = ?',
+        { cid, disease, stage, stage }
+    )
+end
+
+function DB.ClearDisease(cid, disease)
+    MySQL.query.await('DELETE FROM hbs_diseases WHERE citizenid = ? AND disease = ?', { cid, disease })
+end
+
+function DB.ClearAllDiseases(cid)
+    MySQL.query.await('DELETE FROM hbs_diseases WHERE citizenid = ?', { cid })
+end

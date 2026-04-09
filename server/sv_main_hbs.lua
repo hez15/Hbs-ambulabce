@@ -12,13 +12,16 @@ local function ApplyPlayerStateBags(src, cid)
     local injuries    = DB.LoadInjuries(cid)
     local stress      = DB.LoadStress(cid)
     local addiction   = DB.LoadAddiction(cid)
+    local diseases    = DB.LoadDiseases(cid)
     HBS.Set(src, 'emsTier',    emsResearch.tier)
     HBS.Set(src, 'emsXP',      emsResearch.xp)
     HBS.Set(src, 'emsUnlocks', emsResearch.unlocks)
     HBS.Set(src, 'injuries',   injuries)
     HBS.Set(src, 'stress',     stress)
     HBS.Set(src, 'addiction',  addiction)
-    HBSLog('ApplyPlayerStateBags', ('cid=%s tier=%d xp=%d'):format(cid, emsResearch.tier, emsResearch.xp))
+    HBS.Set(src, 'diseases',   diseases)
+    HBSLog('ApplyPlayerStateBags', ('cid=%s tier=%d xp=%d diseases=%d'):format(
+        cid, emsResearch.tier, emsResearch.xp, (function() local n=0; for _ in pairs(diseases) do n=n+1 end; return n end)()))
 end
 
 AddEventHandler('QBCore:Server:PlayerLoaded', function(player)
@@ -55,6 +58,7 @@ lib.callback.register('hbs_ambulance:server:getPlayerState', function(source)
     local injuries    = HBS.Get(src, 'injuries')   or {}
     local stress      = HBS.Get(src, 'stress')     or 0
     local addiction   = HBS.Get(src, 'addiction')  or {}
+    local diseases    = HBS.Get(src, 'diseases')   or {}
     local emsResearch = {
         tier    = HBS.Get(src, 'emsTier')    or 1,
         xp      = HBS.Get(src, 'emsXP')      or 0,
@@ -68,6 +72,7 @@ lib.callback.register('hbs_ambulance:server:getPlayerState', function(source)
         injuries    = injuries,
         stress      = stress,
         addiction   = addiction,
+        diseases    = diseases,
         emsResearch = emsResearch,
     }
 end)
@@ -112,10 +117,15 @@ AddEventHandler('qbx_medical:server:playerRespawned', function()
     HBS.Set(src, 'isDowned', false)
     HBS.Set(src, 'triage', nil)
     local cid = HBSUtils.GetCitizenId(src)
-    if cid then DB.ClearInjuries(cid) end
+    if cid then
+        DB.ClearInjuries(cid)
+        DB.ClearAllDiseases(cid)
+    end
     HBS.Set(src, 'injuries', {})
+    HBS.Set(src, 'diseases', {})
     TriggerEvent('hbs:server:broadcastDownedBlips')
     TriggerClientEvent('hbs_ambulance:client:clearInjuries', src)
+    TriggerClientEvent('hbs_ambulance:client:diseasesUpdate', src, {})
     HBSLog('qbx_medical playerRespawned', ('player %s cleared'):format(GetPlayerName(src)))
 end)
 
@@ -131,25 +141,37 @@ RegisterNetEvent('hbs_ambulance:server:playerDowned', function()
     HBS.Set(src, 'isDowned', true)
 
     TriggerEvent('hbs:server:broadcastDownedBlips')
+end)
 
-    -- Dispatch alert with cooldown
+-- ── Call EMS (voluntary dispatch from death screen) ──────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:callEMS', function()
+    local src = source
+    if not DownedPlayers[src] then return end  -- must be downed
+
     local now  = os.time()
     local last = DispatchCooldowns[src] or 0
-    if (now - last) >= (HBSConfig.DispatchCooldown or 30) then
-        DispatchCooldowns[src] = now
+    if (now - last) < (HBSConfig.DispatchCooldown or 120) then
+        local remaining = (HBSConfig.DispatchCooldown or 120) - (now - last)
+        TriggerClientEvent('hbs_ambulance:client:callEMSResult', src, false, remaining)
+        return
+    end
+    DispatchCooldowns[src] = now
 
-        -- ps-dispatch + lb-phone
-        HBSDispatch.CivilianDown(src, coords)
+    local coords = GetEntityCoords(GetPlayerPed(src))
+    HBSDispatch.CivilianDown(src, coords)
 
-        -- qbx ambulance alert (in-game blip/sound for EMS on duty)
-        local msg = string.format('Civilian down at %.0f, %.0f', coords.x, coords.y)
-        local players = exports.qbx_core:GetQBPlayers()
-        for _, v in pairs(players) do
-            if v.PlayerData.job.type == 'ems' and v.PlayerData.job.onduty then
-                TriggerClientEvent('hospital:client:ambulanceAlert', v.PlayerData.source, coords, msg)
-            end
+    -- qbx ambulance alert (in-game blip/sound for on-duty EMS)
+    local msg = string.format('Civilian down at %.0f, %.0f', coords.x, coords.y)
+    local players = exports.qbx_core:GetQBPlayers()
+    for _, v in pairs(players) do
+        if v.PlayerData.job.type == 'ems' and v.PlayerData.job.onduty then
+            TriggerClientEvent('hospital:client:ambulanceAlert', v.PlayerData.source, coords, msg)
         end
     end
+
+    TriggerClientEvent('hbs_ambulance:client:callEMSResult', src, true, 0)
+    HBSLog('callEMS', ('src=%s called EMS at %.0f,%.0f'):format(tostring(src), coords.x, coords.y))
 end)
 
 -- ── Respawn request ───────────────────────────────────────────────────────
