@@ -164,3 +164,21 @@ RegisterNetEvent('hbs_ambulance:client:setHealth', function(hp)
     local maxHp = GetEntityMaxHealth(ped)
     SetEntityHealth(ped, math.max(101, math.min(maxHp, math.floor(hp))))
 end)
+
+-- Delta-based HP change: positive = heal, negative = damage penalty.
+-- Reads current HP client-side (accurate in OAL mode), clamps between 101 and maxHp.
+RegisterNetEvent('hbs_ambulance:client:addHealth', function(amount)
+    local ped = cache.ped
+    if not ped or ped == 0 then return end
+    local maxHp = GetEntityMaxHealth(ped)
+    SetEntityHealth(ped, math.max(101, math.min(maxHp, GetEntityHealth(ped) + math.floor(amount))))
+end)
+
+-- Server asks this client to report its own HP so the server can relay it to an EMS.
+-- requestingSrc is the server ID of the EMS who triggered checkVitals.
+RegisterNetEvent('hbs_ambulance:client:reportVitals', function(requestingSrc)
+    local ped = cache.ped
+    if not ped or ped == 0 then return end
+    TriggerServerEvent('hbs_ambulance:server:vitalsReport',
+        requestingSrc, GetEntityHealth(ped), GetEntityMaxHealth(ped))
+end)

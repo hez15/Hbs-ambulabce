@@ -154,11 +154,9 @@ end)
 RegisterNetEvent('hbs_ambulance:server:minigameFailed', function(targetSrc, actionType)
     local src = source
     if not HBSUtils.IsEMS(src) then return end
-    local ped = GetPlayerPed(targetSrc)
-    if not ped or ped == 0 then return end
     local penalty = actionType == 'revive' and 15 or 8
-    local hp = GetEntityHealth(ped)
-    TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, math.max(101, hp - penalty))
+    -- addHealth clamps at 101 client-side; avoids unreliable GetEntityHealth in OAL mode
+    TriggerClientEvent('hbs_ambulance:client:addHealth', targetSrc, -penalty)
     HBSLog('minigameFailed', ('action=%s target=%s penalty=%d'):format(actionType, tostring(targetSrc), penalty))
 end)
 
@@ -239,9 +237,7 @@ RegisterNetEvent('hbs_ambulance:server:emsTreatInjury', function(targetSrc, part
 
     -- IV Therapy: restore some HP per successful treatment
     if HasUnlock(src, 'iv_therapy') then
-        local ped = GetPlayerPed(targetSrc)
-        TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc,
-            math.min(200, GetEntityHealth(ped) + 25))
+        TriggerClientEvent('hbs_ambulance:client:addHealth', targetSrc, 25)
     end
 
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
@@ -250,19 +246,21 @@ RegisterNetEvent('hbs_ambulance:server:emsTreatInjury', function(targetSrc, part
 end)
 
 -- ── Quick vitals check (no unlock required, alive players only) ──────────────
+-- Two-step: EMS → server asks target client to report HP → target sends back → server relays.
+-- This avoids GetEntityHealth/GetPlayerPed which return 0 for remote peds in OAL mode.
 
 RegisterNetEvent('hbs_ambulance:server:checkVitals', function(targetSrc)
     local src = source
     if not HBSUtils.IsEMS(src) then return end
-    local ped = GetPlayerPed(targetSrc)
-    if not ped or ped == 0 then return end
+    -- Ask the target's client to read its own HP and report back
+    TriggerClientEvent('hbs_ambulance:client:reportVitals', targetSrc, src)
+end)
 
-    local hp     = GetEntityHealth(ped)
-    local maxHp  = GetEntityMaxHealth(ped)
+RegisterNetEvent('hbs_ambulance:server:vitalsReport', function(requestingSrc, hp, maxHp)
+    local targetSrc = source
     local cid    = HBSUtils.GetCitizenId(targetSrc)
     local stress = cid and DB.LoadStress(cid) or 0
-
-    TriggerClientEvent('hbs_ambulance:client:vitalsResult', src, {
+    TriggerClientEvent('hbs_ambulance:client:vitalsResult', requestingSrc, {
         playerName = GetPlayerName(targetSrc),
         health     = hp,
         maxHealth  = maxHp,

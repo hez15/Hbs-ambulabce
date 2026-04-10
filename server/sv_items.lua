@@ -66,10 +66,9 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
         end
     end
 
-    -- Restore HP
+    -- Restore HP (delegate to client — GetEntityHealth is unreliable in OAL mode)
     if cfg.healthRestore then
-        local ped = GetPlayerPed(src)
-        SetEntityHealth(ped, math.min(200, GetEntityHealth(ped) + cfg.healthRestore))
+        TriggerClientEvent('hbs_ambulance:client:addHealth', src, cfg.healthRestore)
     end
 
     -- Stress reduction
@@ -135,9 +134,7 @@ RegisterNetEvent('hbs_ambulance:server:useItemOnInjury', function(itemName, part
     if not cid then return end
 
     if cfg.healthRestore then
-        local ped = GetPlayerPed(src)
-        TriggerClientEvent('hbs_ambulance:client:setHealth', src,
-            math.min(200, GetEntityHealth(ped) + cfg.healthRestore))
+        TriggerClientEvent('hbs_ambulance:client:addHealth', src, cfg.healthRestore)
     end
     if cfg.stressReduce then
         local stress = DB.LoadStress(cid)
@@ -189,8 +186,7 @@ RegisterNetEvent('hbs_ambulance:server:civilianRevive', function(itemName, targe
     HBS.Set(targetSrc, 'triage', nil)
 
     -- Give them low HP — they're up but in bad shape
-    local ped = GetPlayerPed(targetSrc)
-    SetEntityHealth(ped, 120) -- ~20 HP above minimum
+    TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 120)
 
     TriggerClientEvent('qbx_medical:client:playerRevived', targetSrc)
     TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)

@@ -73,7 +73,11 @@ end
 -- ── Diseases ──────────────────────────────────────────────────────────────
 
 function DB.LoadDiseases(cid)
-    local rows = MySQL.query.await('SELECT disease, stage FROM hbs_diseases WHERE citizenid = ?', { cid })
+    -- pcall guards against the hbs_diseases table not existing yet on first boot
+    local ok, rows = pcall(function()
+        return MySQL.query.await('SELECT disease, stage FROM hbs_diseases WHERE citizenid = ?', { cid })
+    end)
+    if not ok then return {} end
     local result = {}
     for _, row in ipairs(rows or {}) do
         result[row.disease] = row.stage
