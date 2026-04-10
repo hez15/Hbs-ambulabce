@@ -8,10 +8,9 @@ CREATE TABLE IF NOT EXISTS `hbs_injuries` (
     PRIMARY KEY (`citizenid`, `body_part`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Migration for existing installs where column was named 'part' instead of 'body_part'.
--- Safe to re-run if already on the correct name (will error silently and be ignored
--- by oxmysql's schema runner — or just run manually: ALTER TABLE hbs_injuries RENAME COLUMN part TO body_part)
-ALTER TABLE `hbs_injuries` CHANGE `part` `body_part` VARCHAR(20) NOT NULL;
+-- NOTE: if upgrading from an older install where the column was named 'part',
+-- run this once manually: ALTER TABLE hbs_injuries CHANGE `part` `body_part` VARCHAR(20) NOT NULL;
+-- (Or just drop and recreate — injuries were never saving on the old schema.)
 
 CREATE TABLE IF NOT EXISTS `hbs_stress` (
     `citizenid`  VARCHAR(50)  NOT NULL,

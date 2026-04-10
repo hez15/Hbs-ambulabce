@@ -21,13 +21,22 @@ return {
                 name = 'Armory',
                 groups = { ambulance = 0 },
                 inventory = {
-                    { name = 'radio', price = 0 },
-                    { name = 'bandage', price = 0 },
-                    { name = 'painkiller', price = 0 },
-                    { name = 'firstaidkit', price = 0 },
-                    { name = 'defibrillator', price = 0 },
-                    { name = 'weapon_flashlight', price = 0 },
+                    -- Communication & equipment
+                    { name = 'radio',                   price = 0 },
+                    { name = 'weapon_flashlight',       price = 0 },
                     { name = 'weapon_fireextinguisher', price = 0 },
+                    -- Wound treatment
+                    { name = 'bandage',                 price = 0 },
+                    { name = 'firstaidkit',             price = 0 },
+                    { name = 'splint',                  price = 0 },
+                    { name = 'morphine',                price = 0 },
+                    -- Resuscitation
+                    { name = 'defibrillator',           price = 0 },
+                    { name = 'bloodbag',                price = 0 },
+                    -- Medication
+                    { name = 'painkiller',              price = 0 },
+                    { name = 'methadone',               price = 0 },
+                    { name = 'antibiotic',              price = 0 },
                 },
                 -- vec4: x/y/z = position, w = box zone rotation (heading)
                 locations = {

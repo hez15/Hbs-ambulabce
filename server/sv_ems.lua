@@ -221,23 +221,28 @@ RegisterNetEvent('hbs_ambulance:server:emsTreatInjury', function(targetSrc, part
     local cid = HBSUtils.GetCitizenId(targetSrc)
     if not cid then return end
 
-    local injuries = DB.LoadInjuries(cid)
+    -- Use state bag as authoritative source — always current even if DB is unavailable
+    local injuries = HBS.Get(targetSrc, 'injuries') or {}
     if injuries[part] ~= claimedSev then
-        HBSLog('emsTreatInjury', ('injury changed: %s is now %s not %s'):format(part, tostring(injuries[part]), claimedSev))
+        HBSLog('emsTreatInjury', ('injury mismatch: %s is now %s not %s'):format(part, tostring(injuries[part]), claimedSev))
         TriggerClientEvent('hbs_ambulance:client:notify', src, 'inform', 'Injury already treated.')
         return
     end
 
-    -- Downgrade one step (nil = fully healed)
-    DB.SaveInjury(cid, part, treatCfg.downgradeTo)
+    -- Downgrade one step (nil removes key = fully healed)
+    injuries[part] = treatCfg.downgradeTo
+    HBS.Set(targetSrc, 'injuries', injuries)
+    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc, injuries)
 
-    local updated = DB.LoadInjuries(cid)
-    HBS.Set(targetSrc, 'injuries', updated)
-    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc, updated)
+    -- Persist to DB (best-effort; pcall so a missing/broken table won't abort)
+    pcall(DB.SaveInjury, cid, part, treatCfg.downgradeTo)
 
-    -- IV Therapy: restore some HP per successful treatment
+    -- Base HP restore on any successful treatment
+    TriggerClientEvent('hbs_ambulance:client:addHealth', targetSrc, 15)
+
+    -- IV Therapy: additional HP restore (15 base + 60 = 75 total, matching ability description)
     if HasUnlock(src, 'iv_therapy') then
-        TriggerClientEvent('hbs_ambulance:client:addHealth', targetSrc, 25)
+        TriggerClientEvent('hbs_ambulance:client:addHealth', targetSrc, 60)
     end
 
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)

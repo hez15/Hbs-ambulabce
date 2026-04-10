@@ -10,8 +10,11 @@ RegisterNetEvent('hbs_ambulance:server:saveInjury', function(part, severity)
 
     -- Only save if new injury is worse than existing
     if not cur or InjuryDefs.IsWorse(severity, cur) then
-        DB.SaveInjury(cid, part, severity)
-        existing[part] = severity  -- update local copy; avoids a second DB round-trip
+        local ok, err = pcall(DB.SaveInjury, cid, part, severity)
+        if not ok then
+            HBSLog('saveInjury', ('DB save failed (run SQL migration?): %s'):format(tostring(err)))
+        end
+        existing[part] = severity  -- always update state bag, even if DB failed
         HBS.Set(src, 'injuries', existing)
         TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', src, existing)
         HBSLog('saveInjury', ('cid=%s part=%s sev=%s (prev=%s)'):format(cid, part, severity, tostring(cur)))

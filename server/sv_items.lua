@@ -39,9 +39,9 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
 
     -- Heal injuries
     if cfg.heals and #cfg.heals > 0 then
-        local injuries = DB.LoadInjuries(cid)
+        local injuries = HBS.Get(src, 'injuries') or {}
         local healParts = cfg.healParts or { 'any' }
-        local healed = false
+        local toHeal = {}
 
         for part, sev in pairs(injuries) do
             local partOk = false
@@ -50,19 +50,18 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
             end
             if partOk then
                 for _, healSev in ipairs(cfg.heals) do
-                    if sev == healSev then
-                        DB.SaveInjury(cid, part, nil)
-                        healed = true
-                        break
-                    end
+                    if sev == healSev then toHeal[#toHeal + 1] = part; break end
                 end
             end
         end
 
-        if healed then
-            local updated = DB.LoadInjuries(cid)
-            HBS.Set(src, 'injuries', updated)
-            TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', src)
+        if #toHeal > 0 then
+            for _, part in ipairs(toHeal) do
+                injuries[part] = nil
+                pcall(DB.SaveInjury, cid, part, nil)
+            end
+            HBS.Set(src, 'injuries', injuries)
+            TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', src, injuries)
         end
     end
 
@@ -150,19 +149,20 @@ RegisterNetEvent('hbs_ambulance:server:useItemOnInjury', function(itemName, part
         return
     end
 
-    -- Validate injury still matches (wasn't already treated by EMS)
-    local injuries = DB.LoadInjuries(cid)
+    -- Validate injury still matches — use state bag (authoritative, current even if DB unavailable)
+    local injuries = HBS.Get(src, 'injuries') or {}
     if injuries[part] ~= claimedSev then
         TriggerClientEvent('hbs_ambulance:client:notify', src, 'inform', 'Injury already treated.')
         return
     end
 
-    -- Downgrade one step
-    DB.SaveInjury(cid, part, treatCfg.downgradeTo)
+    -- Downgrade one step (nil removes key = fully healed)
+    injuries[part] = treatCfg.downgradeTo
+    HBS.Set(src, 'injuries', injuries)
+    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', src, injuries)
 
-    local updated = DB.LoadInjuries(cid)
-    HBS.Set(src, 'injuries', updated)
-    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', src, updated)
+    -- Persist to DB (best-effort)
+    pcall(DB.SaveInjury, cid, part, treatCfg.downgradeTo)
 
     HBSLog('useItemOnInjury', ('success: cid=%s %s %s→%s'):format(
         cid, part, claimedSev, tostring(treatCfg.downgradeTo)))
