@@ -71,21 +71,59 @@ Certain medical items carry addiction risk. Addiction has 4 levels:
 
 ### Medical Items
 
-| Item | Effect |
-|------|--------|
-| `bandage` | Heals scratch/minor injuries |
-| `firstaidkit` | Heals scratch/minor/fracture, +30 HP |
-| `bloodbag` | Restores 50 HP |
-| `defibrillator` | Self-revive / EMS revive tool |
-| `morphine` | Heals critical/fracture, -30 stress, +20 HP — addictive |
-| `painkiller` | -15 stress, +10 HP, withdrawal relief — addictive |
-| `splint` | Heals arm/leg fractures |
-| `methadone` | Reduces addiction by 1 level |
+| Item | Effect | Armory |
+|------|--------|--------|
+| `bandage` | Heals scratch/minor injuries | ✓ |
+| `firstaidkit` | Heals scratch/minor/fracture, +30 HP | ✓ |
+| `bloodbag` | Restores 50 HP | ✓ |
+| `defibrillator` | Self-revive / EMS revive tool | ✓ |
+| `morphine` | Heals critical/fracture, -30 stress, +20 HP — addictive | ✓ |
+| `painkiller` | -15 stress, +10 HP, withdrawal relief — addictive | ✓ |
+| `splint` | Heals arm/leg fractures | ✓ |
+| `methadone` | Reduces addiction by 1 level | ✓ |
+| `antibiotic` | EMS uses to treat diseases (flu, infection) | ✓ |
+| `disease_sample` | Collected by EMS from infected patients; used at Research Terminal | — |
 
 To make items useable, add the following to each item in your `ox_inventory` items.lua:
 ```lua
 client = { event = 'hbs_ambulance:client:useItem' }
 ```
+
+**New items to add to ox_inventory** (`antibiotic`, `disease_sample` are not standard qbx items):
+```lua
+['antibiotic'] = {
+    label = 'Antibiotic',
+    weight = 50,
+    stack = true,
+    close = true,
+    description = 'Treats bacterial infections and disease.',
+    client = { event = 'hbs_ambulance:client:useItem' },
+},
+['disease_sample'] = {
+    label = 'Disease Sample',
+    weight = 100,
+    stack = false,
+    close = true,
+    description = 'A biological sample collected from an infected patient. Analyze at the Research Terminal.',
+},
+```
+
+---
+
+### Disease System
+
+Diseases spread between players and progress through stages, applying debuffs at each stage. EMS can diagnose, sample, and treat diseases.
+
+| Disease | Stages | Spreads | Treat Item | Debuffs |
+|---------|--------|---------|------------|---------|
+| Influenza | 3 | Yes (5m radius) | `antibiotic` | Coughing, speed penalty, screen shake (stage 3) |
+| Wound Infection | 2 | No | `antibiotic` | Speed penalty, fever |
+
+**EMS Workflow:**
+1. **Examine Patient** (Tier 2) — see active diseases and stage
+2. **Collect Disease Sample** — appear on downed/standing infected players as a target option; gives EMS a `disease_sample` item
+3. **Research Terminal** — analyse samples at the terminal (server-wide counter per disease); once enough samples are collected the disease is fully researched and shown as known
+4. Treat disease via the Examine menu — consumes one `antibiotic` from EMS inventory
 
 ---
 
@@ -212,7 +250,14 @@ The original qbx_ambulancejob configuration remains in `config/client.lua` and `
 
 | Table | Contents |
 |-------|----------|
-| `hbs_injuries` | Per-player injury state (part + severity) |
+| `hbs_injuries` | Per-player injury state (body_part + severity) |
 | `hbs_stress` | Per-player stress level |
 | `hbs_addiction` | Per-player addiction per substance |
 | `hbs_ems_research` | EMS tier, XP, and unlocks per player |
+| `hbs_diseases` | Per-player active disease and stage |
+
+> **Upgrading from an older install:** if your `hbs_injuries` table has a column named `part` instead of `body_part`, run:
+> ```sql
+> ALTER TABLE hbs_injuries CHANGE `part` `body_part` VARCHAR(20) NOT NULL;
+> ```
+> Or drop and recreate — no valid data was ever written on the old schema.
