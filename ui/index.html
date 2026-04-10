@@ -87,30 +87,47 @@
                 <span id="rt-icon">🖥</span>
                 <div>
                     <div id="rt-title">EMS Research Terminal</div>
-                    <div id="rt-subtitle">Sandfield Medical Centre</div>
+                    <div id="rt-subtitle">HBS Ambulance</div>
                 </div>
             </div>
             <button id="rt-close" onclick="closeResearchTerminal()">✕</button>
         </div>
 
-        <div id="rt-tier-section">
-            <div id="rt-tier-row">
-                <span id="rt-tier-badge">TIER 1</span>
-                <span id="rt-tier-label">EMT</span>
+        <!-- Tab bar -->
+        <div id="rt-tabs">
+            <button class="rt-tab rt-tab-active" id="rt-tab-abilities" onclick="rtSwitchTab('abilities')">EMS Abilities</button>
+            <button class="rt-tab" id="rt-tab-diseases" onclick="rtSwitchTab('diseases')">Disease Research</button>
+        </div>
+
+        <!-- Abilities tab -->
+        <div id="rt-content-abilities">
+            <div id="rt-tier-section">
+                <div id="rt-tier-row">
+                    <span id="rt-tier-badge">TIER 1</span>
+                    <span id="rt-tier-label">EMT</span>
+                </div>
+                <div id="rt-xp-row">
+                    <span id="rt-xp-text">XP: 0 / 500</span>
+                    <span id="rt-next-label">→ Paramedic</span>
+                </div>
+                <div id="rt-xp-bar-bg">
+                    <div id="rt-xp-bar-fill"></div>
+                </div>
             </div>
-            <div id="rt-xp-row">
-                <span id="rt-xp-text">XP: 0 / 500</span>
-                <span id="rt-next-label">→ Paramedic</span>
-            </div>
-            <div id="rt-xp-bar-bg">
-                <div id="rt-xp-bar-fill"></div>
+            <div id="rt-abilities-header">RESEARCH ABILITIES</div>
+            <div id="rt-abilities-list">
+                <!-- populated by JS -->
             </div>
         </div>
 
-        <div id="rt-abilities-header">RESEARCH ABILITIES</div>
-
-        <div id="rt-abilities-list">
-            <!-- populated by JS -->
+        <!-- Disease Research tab -->
+        <div id="rt-content-diseases" class="hidden">
+            <div id="rt-disease-intro">
+                Analyze samples collected from infected patients to build a disease database.
+            </div>
+            <div id="rt-disease-list">
+                <!-- populated by JS -->
+            </div>
         </div>
     </div>
 </div>

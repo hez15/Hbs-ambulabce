@@ -296,42 +296,48 @@ HBSConfig.EMSResearch = {
 
 -- ── Diseases ──────────────────────────────────────────────────────────────────
 -- Each disease has configurable stages with per-stage symptoms.
+-- Symptoms apply DEBUFFS only (no healthDrain) — players stay alive but impaired.
 -- Set spreadRadius = 0 to disable proximity spread.
--- treatItem: ox_inventory item name an EMS must use to treat this disease.
--- Set to nil to make the disease untreatable (natural progression only).
+-- treatItem:       ox_inventory item EMS uses to treat.
+-- sampleItem:      item given to EMS when they collect a sample (add to ox_inventory).
+-- researchTarget:  total samples to fully research the disease (server-wide counter).
 
 HBSConfig.Diseases = {
     flu = {
-        label        = 'Influenza',
-        stages       = 3,
-        spreadRadius = 5.0,    -- metres, players within this range can contract it
-        spreadChance = 0.015,  -- per proximity tick (every 60s)
-        progressTime = 600,    -- seconds per stage advancement
-        treatItem    = 'antibiotic',
+        label          = 'Influenza',
+        stages         = 3,
+        spreadRadius   = 5.0,    -- metres; players within range can contract it
+        spreadChance   = 0.015,  -- per proximity tick (every 60s)
+        progressTime   = 600,    -- seconds per stage advancement
+        treatItem      = 'antibiotic',
+        sampleItem     = 'disease_sample',
+        researchTarget = 5,      -- samples needed to fully research
         symptoms = {
             [1] = { cough=true, speedMult=0.97 },
-            [2] = { cough=true, speedMult=0.93, healthDrain=0.5 },
-            [3] = { cough=true, speedMult=0.88, healthDrain=1.5, screenShake=true },
+            [2] = { cough=true, speedMult=0.93 },
+            [3] = { cough=true, speedMult=0.88, screenShake=true },
         },
     },
     infection = {
-        label        = 'Wound Infection',
-        stages       = 2,
-        spreadRadius = 0,      -- no person-to-person spread
-        progressTime = 900,
-        treatItem    = 'antibiotic',
+        label          = 'Wound Infection',
+        stages         = 2,
+        spreadRadius   = 0,      -- no person-to-person spread
+        progressTime   = 900,
+        treatItem      = 'antibiotic',
+        sampleItem     = 'disease_sample',
+        researchTarget = 5,
         symptoms = {
-            [1] = { healthDrain=0.5 },
-            [2] = { healthDrain=2.0, fever=true },
+            [1] = { speedMult=0.95 },
+            [2] = { speedMult=0.90, fever=true },
         },
     },
 }
 
 -- Research terminal location (ox_target zone at EMS base)
--- This is where EMS view their tier, XP progress, and unlocked abilities
+-- EMS view tier/XP/abilities AND do disease research here.
 HBSConfig.ResearchTerminal = {
-    coords   = vector3(295.2, -582.8, 43.3), -- Adjust to your server
-    label    = 'EMS Research Terminal',
+    coords   = vector3(-651.8798, 337.4890, 83.0836),
+    label    = 'Research Terminal',
     radius   = 1.2,
 }
 

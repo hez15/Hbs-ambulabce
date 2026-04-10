@@ -408,6 +408,24 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_sample',
+        label       = 'Collect Disease Sample',
+        icon        = 'fas fa-vial',
+        distance    = 2.5,
+        canInteract = function(entity)
+            if not HBSIsEMS() then return false end
+            local srv = PedToServerId(entity)
+            if not srv then return false end
+            local diseases = HBS.GetRemote(srv, 'diseases') or {}
+            return next(diseases) ~= nil
+        end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            TriggerServerEvent('hbs_ambulance:server:collectDiseaseSample', srv)
+        end,
+    },
+    {
         name        = 'hbs_ems_vitals',
         label       = 'Check Vitals',
         icon        = 'fas fa-heart-pulse',

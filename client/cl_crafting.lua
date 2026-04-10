@@ -22,11 +22,49 @@ local function OpenResearchMenu()
             unlocked     = tier >= ab.tier,
         }
     end
-    -- Unlocked first, then sorted by required tier
     table.sort(abilities, function(a, b)
         if a.unlocked ~= b.unlocked then return a.unlocked end
         return a.requiredTier < b.requiredTier
     end)
+
+    -- Fetch live research progress + outbreak counts from server
+    local serverData = lib.callback.await('hbs_ambulance:server:getResearchData', false) or {}
+    local research   = serverData.research  or {}
+    local outbreaks  = serverData.outbreaks or {}
+
+    -- Build disease list for NUI
+    local diseases = {}
+    for diseaseId, cfg in pairs(HBSConfig.Diseases or {}) do
+        local debuffs = {}
+        if cfg.symptoms then
+            local seen = {}
+            for s = 1, cfg.stages or 3 do
+                local sym = cfg.symptoms[s]
+                if sym then
+                    if sym.speedMult and sym.speedMult < 1.0 and not seen.speed then
+                        seen.speed = true
+                        debuffs[#debuffs + 1] = ('Speed -%d%%'):format(math.floor((1.0 - sym.speedMult) * 100))
+                    end
+                    if sym.cough       and not seen.cough  then seen.cough  = true; debuffs[#debuffs + 1] = 'Coughing'     end
+                    if sym.screenShake and not seen.shake  then seen.shake  = true; debuffs[#debuffs + 1] = 'Screen Shake' end
+                    if sym.fever       and not seen.fever  then seen.fever  = true; debuffs[#debuffs + 1] = 'Fever'        end
+                end
+            end
+        end
+        diseases[#diseases + 1] = {
+            id             = diseaseId,
+            label          = cfg.label or diseaseId,
+            stages         = cfg.stages or 3,
+            spreads        = (cfg.spreadRadius or 0) > 0,
+            treatItem      = cfg.treatItem or 'antibiotic',
+            sampleItem     = cfg.sampleItem or 'disease_sample',
+            researchTarget = cfg.researchTarget or 5,
+            researched     = research[diseaseId]  or 0,
+            outbreak       = outbreaks[diseaseId] or 0,
+            debuffs        = debuffs,
+        }
+    end
+    table.sort(diseases, function(a, b) return a.label < b.label end)
 
     SendNUIMessage({
         action     = 'showResearchTerminal',
@@ -37,6 +75,7 @@ local function OpenResearchMenu()
         nextXP     = nextCfg and nextCfg.xpRequired or nil,
         nextLabel  = nextCfg and nextCfg.label or nil,
         abilities  = abilities,
+        diseases   = diseases,
     })
     SetNuiFocus(true, true)
 
@@ -47,6 +86,18 @@ RegisterNuiCallback('closeResearchTerminal', function(_, cb)
     SetNuiFocus(false, false)
     HBSUtils.Debug('research', 'research terminal closed')
     cb('ok')
+end)
+
+-- Sent when EMS clicks "Analyze Sample" on the disease tab
+RegisterNuiCallback('analyzeSample', function(data, cb)
+    TriggerServerEvent('hbs_ambulance:server:analyzeSample', data.disease)
+    cb('ok')
+end)
+
+-- Server broadcasts updated research data after a sample is analyzed
+RegisterNetEvent('hbs_ambulance:client:researchUpdate', function(research)
+    -- Forward to NUI so the open terminal refreshes its progress bars
+    SendNUIMessage({ action = 'updateResearch', research = research })
 end)
 
 CreateThread(function()

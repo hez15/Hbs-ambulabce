@@ -31,8 +31,9 @@ window.addEventListener('message', function (e) {
             break;
         case 'withdrawalActive': setIcon('withdrawal', true);           break;
         case 'withdrawalEnded':  setIcon('withdrawal', false);          break;
-        case 'showResearchTerminal': showResearchTerminal(data); break;
-        case 'hideResearchTerminal': hideResearchTerminal();    break;
+        case 'showResearchTerminal': showResearchTerminal(data);       break;
+        case 'hideResearchTerminal': hideResearchTerminal();           break;
+        case 'updateResearch':       rtUpdateResearch(data.research);  break;
         case 'showDeathScreen':showDeathScreen(data.bleedoutMs, data.resourceName); break;
         case 'hideDeathScreen':hideDeathScreen();                     break;
         case 'callEMSResult':  onCallEMSResult(data.success, data.cooldown); break;
@@ -232,19 +233,107 @@ const RT_ABILITY_ICONS = {
     mass_casualty:      '📡',
 };
 
+// ── Research Terminal ─────────────────────────────────────────────────────────
+
+let _rtDiseases = [];   // cached disease list for analyze actions
+
+function rtSwitchTab(tab) {
+    document.getElementById('rt-content-abilities').classList.toggle('hidden', tab !== 'abilities');
+    document.getElementById('rt-content-diseases').classList.toggle('hidden', tab !== 'diseases');
+    document.getElementById('rt-tab-abilities').classList.toggle('rt-tab-active', tab === 'abilities');
+    document.getElementById('rt-tab-diseases').classList.toggle('rt-tab-active', tab === 'diseases');
+}
+
+function rtBuildDiseaseList(diseases) {
+    _rtDiseases = diseases || [];
+    const list = document.getElementById('rt-disease-list');
+    list.innerHTML = '';
+    if (!_rtDiseases.length) {
+        list.innerHTML = '<div class="rt-disease-empty">No disease data available.</div>';
+        return;
+    }
+    _rtDiseases.forEach(d => {
+        const pct      = Math.min(100, Math.round((d.researched / d.researchTarget) * 100));
+        const full     = d.researched >= d.researchTarget;
+        const debufStr = d.debuffs && d.debuffs.length ? d.debuffs.join(' · ') : 'None';
+        const card = document.createElement('div');
+        card.className = 'rt-disease-card' + (full ? ' rt-disease-full' : '');
+        card.dataset.disease = d.id;
+        card.innerHTML = `
+            <div class="rt-disease-top">
+                <div class="rt-disease-name">${d.label}</div>
+                <div class="rt-disease-outbreak ${d.outbreak > 0 ? 'active' : ''}">
+                    ${d.outbreak > 0 ? '⚠ ' + d.outbreak + ' infected' : 'No active cases'}
+                </div>
+            </div>
+            <div class="rt-disease-meta">
+                <span>Stages: ${d.stages}</span>
+                <span>${d.spreads ? '· Contagious' : '· Non-contagious'}</span>
+                <span>· Treat: ${d.treatItem}</span>
+            </div>
+            <div class="rt-disease-debuffs">Debuffs: ${debufStr}</div>
+            <div class="rt-disease-progress-row">
+                <div class="rt-disease-progress-bg">
+                    <div class="rt-disease-progress-fill" style="width:${pct}%"></div>
+                </div>
+                <span class="rt-disease-progress-label">${d.researched} / ${d.researchTarget}</span>
+            </div>
+            <button class="rt-analyze-btn" onclick="rtAnalyzeSample('${d.id}')" ${full ? 'disabled' : ''}>
+                ${full ? '✓ Fully Researched' : '🔬 Analyze Sample'}
+            </button>
+        `;
+        list.appendChild(card);
+    });
+}
+
+function rtAnalyzeSample(disease) {
+    fetch(`https://${_resourceName}/analyzeSample`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ disease }),
+    }).catch(() => {});
+}
+
+function rtUpdateResearch(research) {
+    // Update progress bars on open cards without a full rebuild
+    _rtDiseases.forEach(d => {
+        if (research[d.id] !== undefined) {
+            d.researched = research[d.id];
+        }
+    });
+    const list = document.getElementById('rt-disease-list');
+    if (!list) return;
+    _rtDiseases.forEach(d => {
+        const card = list.querySelector(`[data-disease="${d.id}"]`);
+        if (!card) return;
+        const pct  = Math.min(100, Math.round((d.researched / d.researchTarget) * 100));
+        const full = d.researched >= d.researchTarget;
+        const fill = card.querySelector('.rt-disease-progress-fill');
+        const lbl  = card.querySelector('.rt-disease-progress-label');
+        const btn  = card.querySelector('.rt-analyze-btn');
+        if (fill) fill.style.width = pct + '%';
+        if (lbl)  lbl.textContent  = d.researched + ' / ' + d.researchTarget;
+        if (btn) {
+            btn.disabled    = full;
+            btn.textContent = full ? '✓ Fully Researched' : '🔬 Analyze Sample';
+        }
+        card.classList.toggle('rt-disease-full', full);
+    });
+}
+
 function showResearchTerminal(data) {
-    const { tier, xp, nextTier, nextXP, tierLabel, nextLabel, abilities } = data;
+    const { tier, xp, nextTier, nextXP, tierLabel, nextLabel, abilities, diseases } = data;
 
     document.getElementById('rt-tier-badge').textContent = 'TIER ' + tier;
     document.getElementById('rt-tier-label').textContent = tierLabel || 'EMT';
 
     if (nextXP) {
-        document.getElementById('rt-xp-text').textContent  = 'XP: ' + xp + ' / ' + nextXP;
+        document.getElementById('rt-xp-text').textContent    = 'XP: ' + xp + ' / ' + nextXP;
         document.getElementById('rt-next-label').textContent = '→ ' + (nextLabel || '');
         const pct = Math.max(0, Math.min(100, (xp / nextXP) * 100));
         document.getElementById('rt-xp-bar-fill').style.width = pct + '%';
     } else {
-        document.getElementById('rt-xp-text').textContent  = 'XP: ' + xp + '  (Max Tier)';
+        document.getElementById('rt-xp-text').textContent    = 'XP: ' + xp + '  (Max Tier)';
         document.getElementById('rt-next-label').textContent = '✓ Mastered';
         document.getElementById('rt-xp-bar-fill').style.width = '100%';
     }
@@ -256,10 +345,8 @@ function showResearchTerminal(data) {
         abilities.forEach(ab => {
             const row = document.createElement('div');
             row.className = 'rt-ability ' + (ab.unlocked ? 'unlocked' : 'locked');
-
-            const icon = RT_ABILITY_ICONS[ab.id] || '🔒';
+            const icon     = RT_ABILITY_ICONS[ab.id] || '🔒';
             const badgeText = ab.unlocked ? 'UNLOCKED' : ('TIER ' + ab.requiredTier);
-
             row.innerHTML = `
                 <div class="rt-ability-icon">${icon}</div>
                 <div class="rt-ability-body">
@@ -272,8 +359,13 @@ function showResearchTerminal(data) {
         });
     }
 
+    // Build disease tab
+    rtBuildDiseaseList(diseases);
+
+    // Always open on Abilities tab
+    rtSwitchTab('abilities');
+
     document.getElementById('research-terminal').classList.remove('hidden');
-    // NUI focus is set by Lua when it sends this message (SetNuiFocus is a Lua native)
 }
 
 function hideResearchTerminal() {

@@ -175,6 +175,120 @@ RegisterNetEvent('hbs_ambulance:server:contractDisease', function(disease, stage
     end
 end)
 
+-- ── Disease research (in-memory; resets on server restart) ───────────────────
+-- Tracks how many samples have been analyzed per disease.
+
+local DiseaseResearch = {}   -- { [disease] = count }
+
+-- EMS collects a sample from an infected player via ox_target.
+-- Gives one `sampleItem` (with disease metadata) to the EMS.
+RegisterNetEvent('hbs_ambulance:server:collectDiseaseSample', function(targetSrc)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+
+    local cid = HBSUtils.GetCitizenId(targetSrc)
+    if not cid then return end
+
+    local diseases = DB.LoadDiseases(cid)
+    if not next(diseases) then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Target has no active diseases.')
+        return
+    end
+
+    -- Collect from the worst (highest-stage) disease the target has
+    local chosenDisease, chosenStage = nil, 0
+    for disease, stage in pairs(diseases) do
+        if stage > chosenStage then
+            chosenDisease = disease
+            chosenStage   = stage
+        end
+    end
+
+    local cfg        = HBSConfig.Diseases and HBSConfig.Diseases[chosenDisease]
+    local sampleItem = cfg and cfg.sampleItem or 'disease_sample'
+
+    exports.ox_inventory:AddItem(src, sampleItem, 1, { disease = chosenDisease, stage = chosenStage })
+
+    TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
+        ('Sample collected: %s Stage %d.'):format(cfg and cfg.label or chosenDisease, chosenStage))
+    TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'inform',
+        'A medical sample has been taken from you.')
+
+    HBSLog('disease', ('sample collected: src=%s disease=%s stage=%d'):format(tostring(src), chosenDisease, chosenStage))
+end)
+
+-- EMS analyzes a held sample at the research terminal.
+-- Consumes the sample item, increments the server-wide research counter.
+RegisterNetEvent('hbs_ambulance:server:analyzeSample', function(disease)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+
+    local cfg = HBSConfig.Diseases and HBSConfig.Diseases[disease]
+    if not cfg then return end
+
+    local sampleItem = cfg.sampleItem or 'disease_sample'
+
+    -- Check inventory for a sample of this specific disease
+    local count = exports.ox_inventory:GetItemCount(src, sampleItem, { disease = disease })
+    if count < 1 then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
+            ('No %s sample in your inventory.'):format(cfg.label or disease))
+        return
+    end
+
+    exports.ox_inventory:RemoveItem(src, sampleItem, 1, { disease = disease })
+
+    DiseaseResearch[disease] = (DiseaseResearch[disease] or 0) + 1
+    local total   = DiseaseResearch[disease]
+    local target  = cfg.researchTarget or 5
+
+    HBSLog('disease', ('research: src=%s analyzed %s (%d/%d)'):format(tostring(src), disease, total, target))
+
+    -- Broadcast updated research data to all online EMS
+    local research  = {}
+    for d, c in pairs(DiseaseResearch) do research[d] = c end
+    local players = exports.qbx_core:GetQBPlayers()
+    for _, player in pairs(players) do
+        if player.PlayerData.job.type == 'ems' then
+            TriggerClientEvent('hbs_ambulance:client:researchUpdate', player.PlayerData.source, research)
+        end
+    end
+
+    TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
+        ('Sample analyzed — %s research: %d / %d'):format(cfg.label or disease, total, target))
+
+    if total == target then
+        local msg = ('OUTBREAK RESEARCH: %s fully analyzed! EMS now have optimized treatment data.'):format(cfg.label or disease)
+        for _, player in pairs(players) do
+            if player.PlayerData.job.type == 'ems' then
+                TriggerClientEvent('hbs_ambulance:client:notify', player.PlayerData.source, 'success', msg)
+            end
+        end
+    end
+end)
+
+-- Callback: return current research progress + active outbreak counts for the terminal.
+lib.callback.register('hbs_ambulance:server:getResearchData', function(source)
+    if not HBSUtils.IsEMS(source) then return nil end
+
+    local outbreaks = {}
+    local players = exports.qbx_core:GetQBPlayers()
+    for _, player in pairs(players) do
+        local cid = player.PlayerData.citizenid
+        if cid then
+            local diseases = DB.LoadDiseases(cid)
+            for disease in pairs(diseases) do
+                outbreaks[disease] = (outbreaks[disease] or 0) + 1
+            end
+        end
+    end
+
+    local research = {}
+    for d, c in pairs(DiseaseResearch) do research[d] = c end
+
+    return { research = research, outbreaks = outbreaks }
+end)
+
 -- ── Export for external scripts ────────────────────────────────────────────
 
 exports('contractDisease', function(src, disease, stage)
