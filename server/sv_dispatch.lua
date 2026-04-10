@@ -70,16 +70,15 @@ end
 -- Called when any player goes downed (civilian or EMS patient).
 -- coords: vector3 or table {x,y,z}
 function HBSDispatch.CivilianDown(src, coords)
-    local cfg = HBSConfig.Dispatch.civilianDown
-    local streetName = GetStreetNameAtCoord(coords.x, coords.y, coords.z, Citizen.ResultAsString())
+    local cfg      = HBSConfig.Dispatch.civilianDown
+    local location = ('%.0f, %.0f'):format(coords.x, coords.y)
     local extra = {
-        { key = 'Location', value = streetName or ('%.0f, %.0f'):format(coords.x, coords.y) },
+        { key = 'Location', value = location },
     }
 
     SendPsDispatch(cfg, coords, extra)
 
-    local phoneMsg = ('Civilian down — %s'):format(
-        streetName or ('%.0f, %.0f'):format(coords.x, coords.y))
+    local phoneMsg = ('Civilian down — %s'):format(location)
     SendLbPhoneToEMS('🚨 Medical Emergency', phoneMsg)
 
     HBSLog('dispatch', ('CivilianDown: src=%s coords=%.0f,%.0f'):format(tostring(src), coords.x, coords.y))
@@ -87,17 +86,17 @@ end
 
 -- Called when an EMS broadcasts a Mass Casualty Incident.
 function HBSDispatch.MassCasualty(src, coords, callerName)
-    local cfg = HBSConfig.Dispatch.massCasualty
-    local streetName = GetStreetNameAtCoord(coords.x, coords.y, coords.z, Citizen.ResultAsString())
+    local cfg      = HBSConfig.Dispatch.massCasualty
+    local location = ('%.0f, %.0f'):format(coords.x, coords.y)
     local extra = {
         { key = 'Declared by', value = callerName or 'Unknown EMS' },
-        { key = 'Location',    value = streetName or ('%.0f, %.0f'):format(coords.x, coords.y) },
+        { key = 'Location',    value = location },
     }
 
     SendPsDispatch(cfg, coords, extra)
 
     local phoneMsg = ('%s declared a Mass Casualty Event — %s'):format(
-        callerName or 'EMS', streetName or ('%.0f, %.0f'):format(coords.x, coords.y))
+        callerName or 'EMS', location)
     SendLbPhoneToEMS('🚨 MASS CASUALTY EVENT', phoneMsg, src)
 
     HBSLog('dispatch', ('MassCasualty: src=%s caller=%s'):format(tostring(src), tostring(callerName)))
