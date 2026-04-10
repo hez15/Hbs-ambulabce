@@ -128,6 +128,17 @@ RegisterNetEvent('qbx_ambulancejob:client:checkedIn', function(hospitalName, bed
     putPlayerInBed(hospitalName, bedIndex, true, true)
 end)
 
+---Spawns a stationary NPC ped at `coords` (vec4, w = heading) and returns the ped handle.
+local function spawnCheckInPed(model, coords)
+    lib.requestModel(model)
+    local ped = CreatePed(4, model, coords.x, coords.y, coords.z, coords.w or 0.0, false, true)
+    SetEntityInvincible(ped, true)
+    SetBlockingOfNonTemporaryEvents(ped, true)
+    FreezeEntityPosition(ped, true)
+    SetModelAsNoLongerNeeded(model)
+    return ped
+end
+
 ---Set up check-in and getting into beds using either target or zones
 if config.useTarget then
     CreateThread(function()
@@ -135,13 +146,10 @@ if config.useTarget then
             if hospital.checkIn then
                 if type(hospital.checkIn) ~= 'table' then hospital.checkIn = { hospital.checkIn } end
                 for i = 1, #hospital.checkIn do
-                    exports.ox_target:addBoxZone({
-                        name = hospitalName..'_checkin_'..i,
-                        coords = hospital.checkIn[i],
-                        size = vec3(2, 1, 2),
-                        rotation = 18,
-                        debug = config.debugPoly,
-                        options = {
+                    if hospital.checkInPed then
+                        -- Spawn an NPC at the counter; ox_target goes on the ped entity
+                        local ped = spawnCheckInPed(hospital.checkInPed, hospital.checkIn[i])
+                        exports.ox_target:addLocalEntity(ped, {
                             {
                                 onSelect = function()
                                     checkIn(hospitalName)
@@ -150,8 +158,26 @@ if config.useTarget then
                                 label = locale('text.check'),
                                 distance = 3.0,
                             }
-                        }
-                    })
+                        })
+                    else
+                        exports.ox_target:addBoxZone({
+                            name = hospitalName..'_checkin_'..i,
+                            coords = hospital.checkIn[i],
+                            size = vec3(2, 1, 2),
+                            rotation = 18,
+                            debug = config.debugPoly,
+                            options = {
+                                {
+                                    onSelect = function()
+                                        checkIn(hospitalName)
+                                    end,
+                                    icon = 'fas fa-clipboard',
+                                    label = locale('text.check'),
+                                    distance = 3.0,
+                                }
+                            }
+                        })
+                    end
                 end
             end
 

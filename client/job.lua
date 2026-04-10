@@ -336,11 +336,11 @@ if config.useTarget then
 
         for i = 1, #sharedConfig.locations.armory do
             for ii = 1, #sharedConfig.locations.armory[i].locations do
+                -- coords is vec4; w is used by ox_target as the box zone heading/rotation
                 exports.ox_target:addBoxZone({
                     name = 'armory' .. i .. ':' .. ii,
                     coords = sharedConfig.locations.armory[i].locations[ii],
                     size = vec3(1, 1, 2),
-                    rotation = -20,
                     debug = config.debugPoly,
                     canInteract = function()
                         return QBX.PlayerData.job.type == 'ems'

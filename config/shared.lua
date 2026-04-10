@@ -29,8 +29,10 @@ return {
                     { name = 'weapon_flashlight', price = 0 },
                     { name = 'weapon_fireextinguisher', price = 0 },
                 },
+                -- vec4: x/y/z = position, w = box zone rotation (heading)
                 locations = {
-                    vec3(309.93, -602.94, 43.29)
+                    vec4(309.93, -602.94, 43.29, -20.0),
+                    vec4(-685.6753, 337.4242, 83.0837, 83.6309),
                 }
             }
         },
@@ -56,8 +58,20 @@ return {
         ---@field coords vector4
         ---@field model number
 
-        ---@type table<string, {coords: vector3, checkIn?: vector3|vector3[], beds: Bed[]}>
+        ---@type table<string, {coords: vector3, checkIn?: vector3|vector4|vector3[]|vector4[], checkInPed?: string, beds: Bed[]}>
         hospitals = {
+            hbs = {
+                coords = vec3(-665.0, 350.0, 83.0),
+                -- vec4 w = ped heading; checkInPed triggers ped spawn instead of box zone
+                checkIn = vec4(-675.2578, 330.7374, 83.0837, 173.0383),
+                checkInPed = 's_f_y_hosp_01',
+                beds = {
+                    {coords = vec4(-662.2059, 359.8203, 83.7536, 171.3869), model = 2117668672},
+                    {coords = vec4(-659.2564, 359.3978, 83.7469, 178.9528), model = 2117668672},
+                    {coords = vec4(-656.0694, 359.2540, 83.7525, 173.0717), model = 2117668672},
+                    {coords = vec4(-653.0889, 359.1118, 83.7573, 169.2547), model = 2117668672},
+                },
+            },
             pillbox = {
                 coords = vec3(350, -580, 43),
                 checkIn = vec3(308.19, -595.35, 43.29),
