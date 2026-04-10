@@ -5,7 +5,10 @@ DB = {}
 -- ── Injuries ──────────────────────────────────────────────────────────────
 
 function DB.LoadInjuries(cid)
-    local rows = MySQL.query.await('SELECT body_part, severity FROM hbs_injuries WHERE citizenid = ?', { cid })
+    local ok, rows = pcall(function()
+        return MySQL.query.await('SELECT body_part, severity FROM hbs_injuries WHERE citizenid = ?', { cid })
+    end)
+    if not ok then return {} end
     local result = {}
     for _, row in ipairs(rows or {}) do
         result[row.body_part] = row.severity

@@ -119,7 +119,9 @@ CreateThread(function()
             local ped = cache.ped
             local hp  = GetEntityHealth(ped)
             if hp > 101 then
-                SetEntityHealth(ped, math.max(101, hp - totalDrain))
+                local newHp = math.max(101, hp - totalDrain)
+                SetEntityHealth(ped, newHp)
+                lastHealth = newHp  -- keep damage-detection baseline in sync so bleed isn't re-detected as new damage
                 HBSUtils.Debug('injury', ('bleed drain: %d hp removed (total drain %d)'):format(totalDrain, totalDrain))
             end
         end
