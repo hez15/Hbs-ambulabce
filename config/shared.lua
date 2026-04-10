@@ -64,7 +64,7 @@ return {
                 coords = vec3(-665.0, 350.0, 83.0),
                 -- vec4 w = ped heading; checkInPed triggers ped spawn instead of box zone
                 checkIn = vec4(-675.2578, 330.7374, 83.0837, 173.0383),
-                checkInPed = 's_f_y_nurse_01',
+                checkInPed = 's_f_y_scrubs_01',
                 beds = {
                     {coords = vec4(-662.2059, 359.8203, 83.7536, 171.3869), model = 2117668672},
                     {coords = vec4(-659.2564, 359.3978, 83.7469, 178.9528), model = 2117668672},
