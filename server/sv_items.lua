@@ -103,6 +103,74 @@ RegisterNetEvent('hbs_ambulance:server:useItem', function(itemName)
     exports.qbx_core:Notify(src, (cfg.label or itemName) .. ' used.', 'success')
 end)
 
+-- ── Civilian self-treat (per-injury, staged severity, minigame) ──────────────
+-- Mirrors emsTreatInjury but for civilian self-use.
+-- success=true  → downgrade injury; item consumed.
+-- success=false → item wasted; injury unchanged.
+
+RegisterNetEvent('hbs_ambulance:server:useItemOnInjury', function(itemName, part, claimedSev, success)
+    local src = source
+    local cfg = HBSConfig.MedicalItems[itemName]
+    if not cfg then return end
+
+    -- Validate TreatMap entry
+    local treatCfg = HBSConfig.TreatMap and HBSConfig.TreatMap[claimedSev]
+    if not treatCfg or treatCfg.item ~= itemName then
+        HBSLog('useItemOnInjury', ('invalid mapping: item=%s sev=%s'):format(itemName, tostring(claimedSev)))
+        return
+    end
+
+    -- Validate item is in inventory
+    if exports.ox_inventory:GetItemCount(src, itemName) < 1 then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
+            ('Missing %s — treatment cancelled.'):format(itemName))
+        return
+    end
+
+    -- Consume item (win or lose)
+    exports.ox_inventory:RemoveItem(src, itemName, 1)
+
+    -- Apply any non-wound effects regardless of minigame outcome (HP, stress, addiction)
+    local cid = HBSUtils.GetCitizenId(src)
+    if not cid then return end
+
+    if cfg.healthRestore then
+        local ped = GetPlayerPed(src)
+        TriggerClientEvent('hbs_ambulance:client:setHealth', src,
+            math.min(200, GetEntityHealth(ped) + cfg.healthRestore))
+    end
+    if cfg.stressReduce then
+        local stress = DB.LoadStress(cid)
+        DB.SaveStress(cid, math.max(0, stress - cfg.stressReduce))
+        TriggerClientEvent('hbs_ambulance:client:addStress', src, -cfg.stressReduce)
+    end
+    if cfg.addictive and cfg.substance then
+        RollAddiction(src, cfg.substance)
+    end
+
+    if not success then
+        HBSLog('useItemOnInjury', ('failed minigame: src=%s item=%s wasted'):format(tostring(src), itemName))
+        return
+    end
+
+    -- Validate injury still matches (wasn't already treated by EMS)
+    local injuries = DB.LoadInjuries(cid)
+    if injuries[part] ~= claimedSev then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'inform', 'Injury already treated.')
+        return
+    end
+
+    -- Downgrade one step
+    DB.SaveInjury(cid, part, treatCfg.downgradeTo)
+
+    local updated = DB.LoadInjuries(cid)
+    HBS.Set(src, 'injuries', updated)
+    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', src, updated)
+
+    HBSLog('useItemOnInjury', ('success: cid=%s %s %s→%s'):format(
+        cid, part, claimedSev, tostring(treatCfg.downgradeTo)))
+end)
+
 -- ── Civilian revive (first aid kit on downed player) ─────────────────────────
 
 RegisterNetEvent('hbs_ambulance:server:civilianRevive', function(itemName, targetSrc)

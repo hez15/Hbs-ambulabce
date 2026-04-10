@@ -184,35 +184,69 @@ RegisterNetEvent('hospital:server:RevivePlayer', function(playerId)
     TriggerEvent('hbs:server:broadcastDownedBlips')
 end)
 
--- ── Treat wounds ──────────────────────────────────────────────────────────
+-- ── Treat wounds (per-injury, staged severity) ────────────────────────────
+-- Called by cl_ems.lua after each minigame attempt.
+-- success=true  → downgrade injury one step; item consumed.
+-- success=false → item wasted; injury unchanged.
 
-RegisterNetEvent('hbs_ambulance:server:emsTreat', function(targetSrc)
+RegisterNetEvent('hbs_ambulance:server:emsTreatInjury', function(targetSrc, part, claimedSev, itemName, success)
     local src = source
     if not HBSUtils.IsEMS(src) then return end
 
+    -- Validate treat map entry matches what client claims
+    local treatCfg = HBSConfig.TreatMap and HBSConfig.TreatMap[claimedSev]
+    if not treatCfg or treatCfg.item ~= itemName then
+        HBSLog('emsTreatInjury', ('invalid: sev=%s item=%s'):format(tostring(claimedSev), tostring(itemName)))
+        return
+    end
+
+    -- Trauma Splint gate (server-side authoritative)
+    if claimedSev == 'fracture' and not HasUnlock(src, 'trauma_splint') then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Requires Trauma Splint unlock.')
+        return
+    end
+
+    -- Consume item (win or lose — it's used up)
+    if exports.ox_inventory:GetItemCount(src, itemName) < 1 then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
+            ('Missing %s — treatment cancelled.'):format(itemName))
+        return
+    end
+    exports.ox_inventory:RemoveItem(src, itemName, 1)
+
+    if not success then
+        HBSLog('emsTreatInjury', ('failed minigame: src=%s item=%s wasted'):format(tostring(src), itemName))
+        return
+    end
+
+    -- Validate injury still exists and severity matches
     local cid = HBSUtils.GetCitizenId(targetSrc)
     if not cid then return end
 
-    local injuries     = DB.LoadInjuries(cid)
-    local traumaSplint = HasUnlock(src, 'trauma_splint')
-
-    for part, sev in pairs(injuries) do
-        local heal = sev == 'scratch' or sev == 'minor'
-        if traumaSplint and sev == 'fracture' then heal = true end
-        if sev == 'critical' then heal = false end  -- critical needs full surgery
-        if heal then DB.SaveInjury(cid, part, nil) end
+    local injuries = DB.LoadInjuries(cid)
+    if injuries[part] ~= claimedSev then
+        HBSLog('emsTreatInjury', ('injury changed: %s is now %s not %s'):format(part, tostring(injuries[part]), claimedSev))
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'inform', 'Injury already treated.')
+        return
     end
 
-    if HasUnlock(src, 'iv_therapy') then
-        local ped = GetPlayerPed(targetSrc)
-        TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, math.min(200, GetEntityHealth(ped) + 75))
-    end
+    -- Downgrade one step (nil = fully healed)
+    DB.SaveInjury(cid, part, treatCfg.downgradeTo)
 
     local updated = DB.LoadInjuries(cid)
     HBS.Set(targetSrc, 'injuries', updated)
-    -- Pass updated injuries so the client can sync HBSState.injuries before applying effects
     TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc, updated)
+
+    -- IV Therapy: restore some HP per successful treatment
+    if HasUnlock(src, 'iv_therapy') then
+        local ped = GetPlayerPed(targetSrc)
+        TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc,
+            math.min(200, GetEntityHealth(ped) + 25))
+    end
+
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
+    HBSLog('emsTreatInjury', ('success: cid=%s %s %s→%s'):format(
+        cid, part, claimedSev, tostring(treatCfg.downgradeTo)))
 end)
 
 -- ── Quick vitals check (no unlock required, alive players only) ──────────────

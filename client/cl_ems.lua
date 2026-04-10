@@ -26,8 +26,9 @@ end
 
 -- ── Minigame ─────────────────────────────────────────────────────────────
 
-local _mgResult  = nil
-local _mgActive  = false
+-- Globals so cl_items.lua can call RunMinigame without duplicating the callback.
+_mgResult  = nil
+_mgActive  = false
 
 RegisterNuiCallback('minigameResult', function(data, cb)
     _mgResult = data.success == true
@@ -39,7 +40,8 @@ end)
 -- theme='cpr' uses press-counter mode (pressTarget taps required).
 -- All other themes use the precision bar (bar mode).
 -- Returns true on success, false on failure or timeout.
-local function RunMinigame(theme, difficulty, pressTarget)
+-- Global so civilian item use (cl_items.lua) can call it too.
+function RunMinigame(theme, difficulty, pressTarget)
     if _mgActive then return false end
     _mgResult = nil
     _mgActive = true
@@ -223,25 +225,85 @@ end
 
 -- ── Treat wounds ──────────────────────────────────────────────────────────
 
-local function TreatWounds(targetSrc)
-    local worst = GetPatientWorstInjury(targetSrc)
-    local difficulty = SeverityToDifficulty(worst)
-    HBSUtils.Debug('ems', ('TreatWounds: target=%s worstInjury=%s difficulty=%s'):format(
-        tostring(targetSrc), tostring(worst), difficulty))
+local SEV_LABELS = { scratch='Scratch', minor='Minor Wound', fracture='Fracture', critical='Critical Wound' }
+
+-- Perform the minigame + server event for a single injury
+local function TreatInjury(targetSrc, part, sev, treatCfg)
+    HBSUtils.Debug('ems', ('TreatInjury: target=%s part=%s sev=%s item=%s'):format(
+        tostring(targetSrc), part, sev, treatCfg.item))
 
     PlayAnim('mini@repair', 'fixing_a_ped', 16)
-    local success = RunMinigame('treat', difficulty)
+    local success = RunMinigame(treatCfg.theme, treatCfg.difficulty)
     ClearPedTasks(cache.ped)
 
+    -- Item is always consumed (win or lose); pass result to server
+    TriggerServerEvent('hbs_ambulance:server:emsTreatInjury', targetSrc, part, sev, treatCfg.item, success)
+
     if success then
-        HBSUtils.Debug('ems', 'TreatWounds succeeded for target=' .. tostring(targetSrc))
-        TriggerServerEvent('hbs_ambulance:server:emsTreat', targetSrc)
-        exports.qbx_core:Notify('Wounds treated successfully.', 'success')
+        local next = treatCfg.downgradeTo
+        local msg  = next
+            and ('Treated %s — now %s'):format(SEV_LABELS[sev] or sev, SEV_LABELS[next] or next)
+            or  ('Treated %s — fully healed.'):format(SEV_LABELS[sev] or sev)
+        exports.qbx_core:Notify(msg, 'success')
     else
-        HBSUtils.Debug('ems', 'TreatWounds failed for target=' .. tostring(targetSrc))
         TriggerServerEvent('hbs_ambulance:server:minigameFailed', targetSrc, 'treat')
-        exports.qbx_core:Notify('Treatment failed — patient stressed.', 'error')
+        exports.qbx_core:Notify(('Treatment failed — %s wasted.'):format(treatCfg.item), 'error')
     end
+end
+
+-- Open per-injury selection menu
+local function TreatWounds(targetSrc)
+    local injuries = HBS.GetRemote(targetSrc, 'injuries') or {}
+    if not next(injuries) then
+        exports.qbx_core:Notify('Patient has no injuries to treat.', 'inform')
+        return
+    end
+
+    local options = {}
+    for part, sev in pairs(injuries) do
+        local treatCfg = HBSConfig.TreatMap and HBSConfig.TreatMap[sev]
+        if not treatCfg then goto nextInj end
+
+        -- Trauma Splint unlock required for fractures
+        if sev == 'fracture' and not HBSHasUnlock('trauma_splint') then
+            options[#options + 1] = {
+                title       = ('%s — %s'):format(part:gsub('_', ' '):gsub('^%l', string.upper), SEV_LABELS[sev]),
+                description = 'Requires Trauma Splint unlock (Tier 3)',
+                disabled    = true,
+            }
+            goto nextInj
+        end
+
+        local hasItem   = exports.ox_inventory:Search('count', treatCfg.item) > 0
+        local partLabel = part:gsub('_', ' '):gsub('^%l', string.upper)
+        local nextSev   = treatCfg.downgradeTo
+        local result    = nextSev and ('→ ' .. (SEV_LABELS[nextSev] or nextSev)) or '→ Healed'
+
+        local _part, _sev, _cfg = part, sev, treatCfg  -- capture for closure
+        options[#options + 1] = {
+            title       = ('%s — %s %s'):format(partLabel, SEV_LABELS[sev] or sev, result),
+            description = ('Requires: 1x %s%s'):format(treatCfg.item, hasItem and '' or '  ⚠ NOT IN INVENTORY'),
+            disabled    = not hasItem,
+            onSelect    = function()
+                CreateThread(function() TreatInjury(targetSrc, _part, _sev, _cfg) end)
+            end,
+        }
+        ::nextInj::
+    end
+
+    if #options == 0 then
+        exports.qbx_core:Notify('No treatable injuries (check unlocks / inventory).', 'inform')
+        return
+    end
+
+    -- Sort: enabled first, then by label
+    table.sort(options, function(a, b)
+        if a.disabled ~= b.disabled then return not a.disabled end
+        return a.title < b.title
+    end)
+
+    lib.registerContext({ id = 'hbs_treat_menu', title = 'Treat Wounds', options = options })
+    lib.showContext('hbs_treat_menu')
 end
 
 -- ── Carry ─────────────────────────────────────────────────────────────────

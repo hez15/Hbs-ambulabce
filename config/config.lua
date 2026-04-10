@@ -41,6 +41,20 @@ HBSConfig.TreatTime   = 5
 HBSConfig.ReviveRequiresItem = true
 HBSConfig.ReviveItem         = 'defibrillator'
 
+-- ── Treat Map ─────────────────────────────────────────────────────────────────
+-- Controls per-wound treatment: required item, minigame, and staged severity.
+-- downgradeTo: the severity wound becomes after treatment (nil = fully healed).
+-- Item is consumed on both success AND failure (failure wastes the item).
+-- EMS: Trauma Splint unlock (Tier 3) still required to treat fractures.
+-- Civilian self-treat follows the same rules.
+
+HBSConfig.TreatMap = {
+    scratch  = { item = 'bandage',  theme = 'treat',   difficulty = 'easy',   downgradeTo = nil        },
+    minor    = { item = 'bandage',  theme = 'treat',   difficulty = 'medium', downgradeTo = 'scratch'  },
+    fracture = { item = 'splint',   theme = 'suture',  difficulty = 'medium', downgradeTo = 'minor'    },
+    critical = { item = 'morphine', theme = 'surgery', difficulty = 'hard',   downgradeTo = 'fracture' },
+}
+
 HBSConfig.DispatchCooldown = 30
 HBSConfig.MinEmsOnline = 1
 
