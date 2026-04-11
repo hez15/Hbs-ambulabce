@@ -387,7 +387,7 @@ RegisterNetEvent('hbs_ambulance:server:fullSurgery', function(targetSrc)
 
     DB.ClearInjuries(cid)
     HBS.Set(targetSrc, 'injuries', {})
-    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc)
+    TriggerClientEvent('hbs_ambulance:client:applyInjuryEffects', targetSrc, {})
     TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 200)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat * 3)
 end)
