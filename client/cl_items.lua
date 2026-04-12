@@ -179,3 +179,16 @@ AddEventHandler('hbs_ambulance:client:useItem', function(data)
     local name = type(data) == 'string' and data or (data.name or data.item)
     CreateThread(function() UseItem(name) end)
 end)
+
+-- Preload all item animation dicts at player load so first use has zero wait
+AddEventHandler('hbs:client:stateLoaded', function()
+    CreateThread(function()
+        local seen = {}
+        for _, cfg in pairs(HBSConfig.MedicalItems or {}) do
+            if cfg.animation and cfg.animation.dict and not seen[cfg.animation.dict] then
+                seen[cfg.animation.dict] = true
+                RequestAnimDict(cfg.animation.dict)
+            end
+        end
+    end)
+end)

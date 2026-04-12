@@ -1,6 +1,8 @@
 -- HBS Injury tracking: detect damage, apply movement/visual effects
 
 local lastHealth = 200
+local smallHitCount = 0   -- consecutive low-damage hits (melee/punch pattern)
+local isKnockedOut  = false
 
 -- Reset baseline health on load so first tick doesn't create false injuries
 AddEventHandler('hbs:client:stateLoaded', function()
@@ -39,6 +41,25 @@ CreateThread(function()
         if health < lastHealth then
             local dmg = lastHealth - health
             if dmg >= 1 then
+                -- Track punch pattern: small repeated hits
+                if dmg < 15 then
+                    smallHitCount = smallHitCount + 1
+                else
+                    smallHitCount = 0
+                end
+
+                -- Melee knockout: health in danger zone from accumulated punches
+                -- Stabilise HP above laststand floor and apply daze effect
+                if not isKnockedOut and not HBSState.isDowned
+                   and health > 101 and health < 115 and smallHitCount >= 3 then
+                    isKnockedOut  = true
+                    smallHitCount = 0
+                    SetEntityHealth(ped, 108)
+                    lastHealth = 108
+                    TriggerEvent('hbs:client:meleeKnockout')
+                    goto continue
+                end
+
                 local boneHit = GetPedLastDamageBone(ped)
                 ClearPedLastDamageBone(ped)
                 local part    = InjuryDefs.BoneToBodyPart(boneHit)
@@ -146,6 +167,8 @@ end)
 -- ── Clear injuries (on revive / respawn) ─────────────────────────────────
 
 AddEventHandler('hbs:client:clearInjuries', function()
+    isKnockedOut  = false
+    smallHitCount = 0
     HBSUtils.Debug('injury', 'injuries cleared')
     HBSState.injuries = {}
     HBS.SetLocal('injuries', {})
@@ -183,4 +206,29 @@ RegisterNetEvent('hbs_ambulance:client:reportVitals', function(requestingSrc)
     if not ped or ped == 0 then return end
     TriggerServerEvent('hbs_ambulance:server:vitalsReport',
         requestingSrc, GetEntityHealth(ped), GetEntityMaxHealth(ped))
+end)
+
+-- ── Melee knockout effect ─────────────────────────────────────────────────
+
+AddEventHandler('hbs:client:meleeKnockout', function()
+    local ped = cache.ped
+    HBSUtils.Debug('injury', 'melee knockout triggered')
+
+    DoScreenFadeOut(200)
+    SetPedToRagdoll(ped, 3500, 3500, 0, false, false, false)
+    Wait(300)
+    DoScreenFadeIn(900)
+
+    ShakeGameplayCam('MEDIUM_EXPLOSION_SHAKE', 0.35)
+    SetTimecycleModifier('drug_flying_in_sky')
+    SetTimecycleModifierStrength(0.5)
+    HBSNotify('You\'re dazed from the hit...', 'error')
+
+    Wait(1500)
+    ShakeGameplayCam('MEDIUM_EXPLOSION_SHAKE', 0.0)
+
+    Wait(3500)
+    ClearTimecycleModifier()
+    isKnockedOut = false
+    HBSUtils.Debug('injury', 'knockout recovered')
 end)

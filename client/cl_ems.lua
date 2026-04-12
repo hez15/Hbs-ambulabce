@@ -7,6 +7,7 @@ local carriedSrc       = nil
 local handsCooldownEnd = 0          -- GetGameTimer() timestamp when hands-only revive unlocks again
 local HANDS_COOLDOWN   = 3 * 60 * 1000  -- 3 minutes in ms
 local reviveActive     = false      -- prevents double-fire from ox_target
+local stretcherProp = nil  -- prop created during patient carry
 
 -- ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -310,6 +311,34 @@ end
 
 local StopCarry  -- forward declaration so StartCarry's closure can reference it
 
+local function SpawnStretcherProp()
+    local model = `prop_amb_stretcher_01`
+    if not HasModelLoaded(model) then
+        RequestModel(model)
+        local t = 0
+        while not HasModelLoaded(model) and t < 30 do Wait(100); t = t + 1 end
+    end
+    if HasModelLoaded(model) then
+        local coords = GetEntityCoords(cache.ped)
+        stretcherProp = CreateObject(model, coords.x, coords.y, coords.z - 1.0, true, true, false)
+        AttachEntityToEntity(stretcherProp, cache.ped,
+            GetPedBoneIndex(cache.ped, 57005),   -- SKEL_R_Hand
+            0.4, 0.6, -0.8, 0.0, 0.0, 180.0,
+            true, true, false, true, 1, true)
+        SetModelAsNoLongerNeeded(model)
+        HBSUtils.Debug('ems', 'stretcher prop attached')
+    end
+end
+
+local function DespawnStretcherProp()
+    if stretcherProp and DoesEntityExist(stretcherProp) then
+        DetachEntity(stretcherProp, true, true)
+        DeleteObject(stretcherProp)
+        stretcherProp = nil
+        HBSUtils.Debug('ems', 'stretcher prop removed')
+    end
+end
+
 local function StartCarry(targetSrc, targetPed)
     if carryActive then return end
     HBSUtils.Debug('ems', ('StartCarry: target=%s'):format(tostring(targetSrc)))
@@ -320,6 +349,7 @@ local function StartCarry(targetSrc, targetPed)
     local myPed     = cache.ped
     local boneIndex = GetPedBoneIndex(myPed, 57005)
     AttachEntityToEntity(targetPed, myPed, boneIndex, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
+    SpawnStretcherProp()
 
     TriggerServerEvent('hbs_ambulance:server:setCarried', targetSrc, true)
 
@@ -344,6 +374,7 @@ StopCarry = function()
         exports.ox_target:removeLocalEntity(carriedPed, { 'hbs_put_down_' .. (carriedSrc or '') })
         DetachEntity(carriedPed, true, true)
     end
+    DespawnStretcherProp()
     TriggerServerEvent('hbs_ambulance:server:setCarried', carriedSrc, false)
     carryActive = false
     carriedPed  = nil
@@ -602,6 +633,39 @@ exports.ox_target:addGlobalPlayer({
                 },
             })
             lib.showContext('hbs_mca_confirm')
+        end,
+    },
+    {
+        name        = 'hbs_civilian_cpr',
+        label       = 'Perform CPR',
+        icon        = 'fas fa-hands',
+        distance    = 2.0,
+        canInteract = function(entity)
+            if HBSIsEMS() then return false end  -- EMS uses proper revive
+            return PedIsDowned(entity)
+        end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            CreateThread(function()
+                local dict = 'missambulance'
+                local clip = 'amb_action_treat_a_doctor'
+                RequestAnimDict(dict)
+                local t = 0
+                while not HasAnimDictLoaded(dict) and t < 30 do Wait(100); t = t + 1 end
+
+                if lib.progressCircle({
+                    duration     = 15000,
+                    label        = 'Performing CPR...',
+                    useWhileDead = false,
+                    canCancel    = true,
+                    disable      = { move = true, car = true, combat = true },
+                    anim         = { dict = dict, clip = clip, flag = 49 },
+                }) then
+                    TriggerServerEvent('hbs_ambulance:server:civilianCPR', srv)
+                end
+                ClearPedTasks(cache.ped)
+            end)
         end,
     },
 })

@@ -7,11 +7,24 @@ local regenThread    = nil
 -- ── Apply high ────────────────────────────────────────────────────────────────
 
 local function ClearHighEffects()
+    if activeHigh and activeHigh.cfg and activeHigh.cfg.effects and activeHigh.cfg.effects.drunk then
+        ResetPedMovementClipset(cache.ped, 0)
+        AnimpostfxStop('DrunkEffect')
+        SetPedConfigFlag(cache.ped, 100, false)
+    end
     SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
     ClearTimecycleModifier()
 end
 
 local function ClearComeDownEffects()
+    if activeComeDown then
+        local drugCfg = HBSConfig.Drugs and HBSConfig.Drugs[activeComeDown.substance]
+        if drugCfg and drugCfg.effects and drugCfg.effects.drunk then
+            ResetPedMovementClipset(cache.ped, 0)
+            AnimpostfxStop('DrunkEffect')
+            SetPedConfigFlag(cache.ped, 100, false)
+        end
+    end
     SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
 end
 
@@ -30,6 +43,19 @@ local function ApplyHighEffects(cfg)
 
     if fx.postFx then
         AnimpostfxPlay(fx.postFx, 2000, false)
+    end
+
+    -- Drunk stumble: override movement clipset and apply blur
+    if fx.drunk then
+        local drunkSet = 'MOVE_M@DRUNK@MODERATEDRUNK'
+        RequestAnimSet(drunkSet)
+        local t = 0
+        while not HasAnimSetLoaded(drunkSet) and t < 20 do Wait(100); t = t + 1 end
+        if HasAnimSetLoaded(drunkSet) then
+            SetPedMovementClipset(cache.ped, drunkSet, 1.0)
+        end
+        AnimpostfxPlay('DrunkEffect', 0, true)
+        SetPedConfigFlag(cache.ped, 100, true)  -- PED_FLAG_IS_DRUNK
     end
 end
 
@@ -152,6 +178,20 @@ AddEventHandler('qbx_core:playerUnloaded', function()
     activeComeDown = nil
     ClearHighEffects()
     ClearComeDownEffects()
+end)
+
+-- Preload drug animation dicts to eliminate first-use delay
+AddEventHandler('hbs:client:stateLoaded', function()
+    CreateThread(function()
+        local seenDicts = {}
+        for _, cfg in pairs(HBSConfig.Drugs or {}) do
+            if cfg.animation and cfg.animation.dict and not seenDicts[cfg.animation.dict] then
+                seenDicts[cfg.animation.dict] = true
+                RequestAnimDict(cfg.animation.dict)
+            end
+        end
+        RequestAnimSet('MOVE_M@DRUNK@MODERATEDRUNK')
+    end)
 end)
 
 -- ── Use drug item event ───────────────────────────────────────────────────────

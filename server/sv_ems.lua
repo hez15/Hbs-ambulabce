@@ -391,3 +391,34 @@ RegisterNetEvent('hbs_ambulance:server:fullSurgery', function(targetSrc)
     TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 200)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat * 3)
 end)
+
+-- ── Civilian CPR (non-EMS bystander, 30% chance, barely-alive revival) ──────
+
+RegisterNetEvent('hbs_ambulance:server:civilianCPR', function(targetSrc)
+    local src = source
+    if HBSUtils.IsEMS(src) then return end  -- EMS has proper revive
+    if not DownedPlayers[targetSrc] then return end
+
+    -- 30% chance of success
+    if math.random() > 0.30 then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
+            'CPR unsuccessful — the patient still needs professional help.')
+        return
+    end
+
+    DownedPlayers[targetSrc] = nil
+    HBS.Set(targetSrc, 'isDowned', false)
+    HBS.Set(targetSrc, 'triage', nil)
+
+    -- 5 HP above the death floor (GHP 106) — barely conscious
+    TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 106)
+    TriggerClientEvent('qbx_medical:client:playerRevived', targetSrc)
+    TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
+    TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'inform',
+        'A bystander revived you with CPR. You are critically injured — find EMS immediately.')
+    TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
+        'CPR worked! Get this person to a hospital — they are barely alive.')
+
+    TriggerEvent('hbs:server:broadcastDownedBlips')
+    HBSLog('civilianCPR', ('bystander src=%s revived target=%s'):format(tostring(src), tostring(targetSrc)))
+end)

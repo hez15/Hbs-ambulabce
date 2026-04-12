@@ -199,6 +199,11 @@ HBSConfig.Substances = {
         addictChance = { [0]=0.05, [1]=0.10, [2]=0.20, [3]=0.35, [4]=0.55 },
         itemAliases  = { 'whippet', 'nitrous', 'nos' },
     },
+    alcohol = {
+        label        = 'Alcohol',
+        addictChance = { [0]=0.05, [1]=0.10, [2]=0.18, [3]=0.30, [4]=0.45 },
+        itemAliases  = { 'vodka', 'beer', 'whiskey', 'wine', 'alcohol' },
+    },
 }
 
 -- ── SubstanceEventHooks ───────────────────────────────────────────────────────
@@ -264,6 +269,14 @@ HBSConfig.MedicalItems = {
     methadone = {
         label = 'Methadone', useTime = 5,
         withdrawalRelief = true, addictionReduce = true, reduceAmount = 1,
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+    vodka = {
+        label = 'Vodka', useTime = 3,
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+    beer = {
+        label = 'Beer', useTime = 2,
         animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
     },
 }
@@ -453,6 +466,42 @@ HBSConfig.Drugs = {
             stressReduce = 60,
             screenEffect = 'drug_wobbly_vision',
             postFx       = 'DrugsMichaelAliensFight',
+        },
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+
+    vodka = {
+        label    = 'Vodka',
+        useTime  = 3,
+        isDrug   = true,
+        substance = 'alcohol',
+        addictive = true,
+        addictChance = { [0]=0.05, [1]=0.10, [2]=0.18, [3]=0.30, [4]=0.45 },
+        duration = 240, -- 4 minute drunk
+        comeDown = 120, -- 2 minute hangover
+        effects = {
+            speedMult    = 0.82,
+            stressReduce = 25,
+            screenEffect = 'drug_wobbly_vision',
+            drunk        = true,  -- enables stumble walk clipset
+        },
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
+
+    beer = {
+        label    = 'Beer',
+        useTime  = 2,
+        isDrug   = true,
+        substance = 'alcohol',
+        addictive = true,
+        addictChance = { [0]=0.02, [1]=0.05, [2]=0.10, [3]=0.20, [4]=0.35 },
+        duration = 120, -- 2 minute mild buzz
+        comeDown = 60,
+        effects = {
+            speedMult    = 0.92,
+            stressReduce = 15,
+            screenEffect = 'drug_wobbly_vision',
+            drunk        = true,
         },
         animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
     },

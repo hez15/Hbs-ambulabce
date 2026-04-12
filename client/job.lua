@@ -266,22 +266,69 @@ local function createGarage(vehicles, coords)
             if QBX.PlayerData.job.type == 'ems' and QBX.PlayerData.job.onduty and IsControlJustPressed(0, 38) then
                 if cache.vehicle then
                     DeleteEntity(cache.vehicle)
-            else
-                showGarageMenu(vehicles, coords)
+                else
+                    showGarageMenu(vehicles, coords)
                 end
             end
         end,
     })
 end
 
+---Spawns a dispatcher NPC at the garage location with an ox_target interaction.
+---@param vehicles AuthorizedVehicles
+---@param spawnCoords vector4  vehicle spawn point (ped stands beside it)
+---@param pedIdx integer       unique index for target zone naming
+local function spawnGaragePed(vehicles, spawnCoords, pedIdx)
+    local model = `s_m_y_ems_01`
+    RequestModel(model)
+    local t = 0
+    while not HasModelLoaded(model) and t < 50 do Wait(100); t = t + 1 end
+    if not HasModelLoaded(model) then return end
+
+    -- Position the dispatcher 3m to the side of the spawn point
+    local rad = math.rad(spawnCoords.w + 90)
+    local px  = spawnCoords.x + math.sin(rad) * 3.0
+    local py  = spawnCoords.y - math.cos(rad) * 3.0
+
+    local ped = CreatePed(4, model, px, py, spawnCoords.z - 1.0, spawnCoords.w + 180, false, true)
+    SetEntityInvincible(ped, true)
+    SetBlockingOfNonTemporaryEvents(ped, true)
+    FreezeEntityPosition(ped, true)
+    SetModelAsNoLongerNeeded(model)
+    TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_CLIPBOARD', 0, true)
+
+    exports.ox_target:addLocalEntity(ped, {
+        {
+            name        = 'hbs_garage_ped_' .. pedIdx,
+            icon        = 'fas fa-car-side',
+            label       = 'Request Vehicle',
+            distance    = 3.0,
+            canInteract = function()
+                return QBX.PlayerData.job
+                    and QBX.PlayerData.job.type == 'ems'
+                    and QBX.PlayerData.job.onduty
+            end,
+            onSelect    = function()
+                if cache.vehicle then
+                    DeleteEntity(cache.vehicle)
+                else
+                    showGarageMenu(vehicles, spawnCoords)
+                end
+            end,
+        },
+    })
+end
+
 ---Creates air and land garages to spawn vehicles at for EMS personnel
 CreateThread(function()
-    for _, coords in pairs(sharedConfig.locations.vehicle) do
+    for i, coords in ipairs(sharedConfig.locations.vehicle) do
         createGarage(config.authorizedVehicles, coords)
+        spawnGaragePed(config.authorizedVehicles, coords, i)
     end
 
-    for _, coords in pairs(sharedConfig.locations.helicopter) do
+    for i, coords in ipairs(sharedConfig.locations.helicopter) do
         createGarage(config.authorizedHelicopters, coords)
+        spawnGaragePed(config.authorizedHelicopters, coords, 100 + i)
     end
 end)
 
