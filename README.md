@@ -58,7 +58,9 @@ Injuries are detected in real time by monitoring HP changes. Each hit is mapped 
 - Injuries persist across sessions via the database
 
 **Melee Knockout:**
-When a player receives 3+ rapid small hits (each <15 dmg) while their health is in the danger zone (101–115 GHP), they are knocked down briefly instead of triggering laststand. This gives a 4-second daze effect (screen fade, ragdoll, cam shake) then recovery — without triggering a full death/hospital event.
+When a player receives 3+ rapid small hits (each <15 dmg) while their health is in the danger zone (101–115 GHP), they are knocked down briefly instead of triggering laststand. A full-screen **Knocked Out** NUI overlay appears (orbiting stars, pulsing title, recovery progress bar) for the duration of the daze — without taking NUI focus, so the player can still look around.
+
+If the player takes **another hit** while dazed (i.e. before they fully recover), the knockout is immediately cancelled and qbx_medical triggers laststand/death normally from the HP drop. One punch-out = temporary daze. Second punch = they go down for real.
 
 ---
 
@@ -253,8 +255,8 @@ EMS earn XP through medical work and progress through 5 tiers, unlocking advance
 Both phases play appropriate animations from the `missambulance` dict.
 
 **Civilian revive options:**
-- **First Aid Kit** — 20-second progress bar on downed player (no minigame)
-- **CPR** — 15-second animation; 30% success chance. On success, player revives at barely-alive HP (106 GHP). They still need EMS treatment.
+- **First Aid Kit** — 20-second progress bar on downed player (no minigame). 5% success chance. On success, player revives at barely-alive HP (106 GHP) with all injuries intact — they still need EMS.
+- **CPR** — 15-second animation (missambulance dict). 5% success chance. Same barely-alive outcome as above. The low odds reflect untrained bystander CPR — better than nothing, but far from reliable.
 
 **On failed minigame:** a small HP penalty is applied to the patient (-15 for revive, -8 for treat).
 
@@ -265,6 +267,18 @@ Both phases play appropriate animations from the `missambulance` dict.
 EMS can pick up and carry downed patients. When carrying begins, a **stretcher prop** (`prop_amb_stretcher_01`) attaches to the EMS's hand. A "Put Down Patient" option appears via ox_target on the carried ped.
 
 **Transport XP:** When an EMS enters a vehicle while carrying a patient, +50 XP is awarded once per carry.
+
+---
+
+### Knockout Screen
+
+When a melee knockout fires, a full-screen NUI overlay appears for ~5 seconds:
+- Dark radial vignette (no NUI focus — player keeps mouse control and can look around)
+- **KNOCKED OUT** pulsing title with yellow glow
+- Five stars orbiting in a circle animation
+- Recovery progress bar filling over the daze duration
+
+The overlay hides automatically when the bar completes, or immediately if the player takes a second hit and transitions to laststand.
 
 ---
 
@@ -300,7 +314,14 @@ HBSConfig.Integrations = {
 
 ### Garage (Vehicle Spawn)
 
-Each vehicle location has a **dispatcher NPC** (`s_m_y_ems_01`) standing beside the spawn point. Interact with them via ox_target to request a vehicle. The existing walk-in zone (press `E`) is also retained.
+Each vehicle and helicopter spawn location automatically spawns a **dispatcher NPC** (`s_m_y_ems_01`) standing 3m beside it. The ped is:
+- Invincible and frozen in place
+- Playing a clipboard idle scenario
+- Targetable via ox_target ("Request Vehicle") — on-duty EMS only
+
+Selecting a vehicle from the menu spawns it at the configured spawn point and teleports the EMS into the driver seat. Both ground-unit and helicopter bays each get their own dispatcher ped.
+
+The walk-in zone (stand inside the box and press `E`) is retained as a fallback.
 
 When requesting a vehicle while already in one, the current vehicle is deleted first.
 

@@ -19,9 +19,10 @@ CreateThread(function()
     while true do
         Wait(0)
         local ped = cache.ped
-        if IsPedRagdoll(ped) and not HBSState.isDowned then
+        -- isKnockedOut suppresses the limiter so the full knockout ragdoll plays out
+        if IsPedRagdoll(ped) and not HBSState.isDowned and not isKnockedOut then
             Wait(500)
-            if IsPedRagdoll(ped) and not HBSState.isDowned then
+            if IsPedRagdoll(ped) and not HBSState.isDowned and not isKnockedOut then
                 SetPedToRagdoll(ped, 0, 0, 0, false, false, false)
             end
         end
@@ -48,8 +49,8 @@ CreateThread(function()
                     smallHitCount = 0
                 end
 
-                -- Melee knockout: health in danger zone from accumulated punches
-                -- Stabilise HP above laststand floor and apply daze effect
+                -- Melee knockout: health in danger zone from accumulated punches.
+                -- Stabilise HP above laststand floor and apply daze effect.
                 if not isKnockedOut and not HBSState.isDowned
                    and health > 101 and health < 115 and smallHitCount >= 3 then
                     isKnockedOut  = true
@@ -57,6 +58,16 @@ CreateThread(function()
                     SetEntityHealth(ped, 108)
                     lastHealth = 108
                     TriggerEvent('hbs:client:meleeKnockout')
+                    goto continue
+                end
+
+                -- Second hit while already knocked out → remove HP floor, let qbx_medical
+                -- trigger laststand naturally from the HP drop.
+                if isKnockedOut and health <= 101 then
+                    isKnockedOut = false
+                    SendNUIMessage({ action = 'hideKnockoutScreen' })
+                    HBSUtils.Debug('injury', 'knockout→downed: second hit while dazed')
+                    -- qbx_medical sees HP ≤ 100 and triggers laststand; nothing else needed here
                     goto continue
                 end
 
