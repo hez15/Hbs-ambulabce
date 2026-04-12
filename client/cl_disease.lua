@@ -3,6 +3,11 @@
 -- ── Load diseases on state load ───────────────────────────────────────────
 
 AddEventHandler('hbs:client:stateLoaded', function()
+    -- Preload symptom animation dicts so cough/animations play immediately
+    CreateThread(function()
+        RequestAnimDict('mp_player_int_upperbody_cough_1_p')
+    end)
+
     local diseases = HBS.GetRemote(cache.serverId or GetPlayerServerId(PlayerId()), 'diseases') or {}
     HBSState.diseases = diseases
     ApplyDiseaseEffects()
@@ -49,7 +54,9 @@ function ApplyDiseaseEffects()
     end
 
     if hasShake then
-        SetGameplayCamShakeAmplitude(0.15)
+        ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.12)
+    else
+        StopGameplayCamShaking(false)
     end
 
     HBSUtils.Debug('disease', ('effects applied: speed=%.2f shake=%s'):format(worstSpeed, tostring(hasShake)))
@@ -91,10 +98,13 @@ CreateThread(function()
             if sym.cough and math.random() < 0.4 then
                 local dict = 'mp_player_int_upperbody_cough_1_p'
                 local clip = 'mp_player_int_cough'
+                if not HasAnimDictLoaded(dict) then
+                    RequestAnimDict(dict)
+                    local t = 0
+                    while not HasAnimDictLoaded(dict) and t < 15 do Wait(100); t = t + 1 end
+                end
                 if HasAnimDictLoaded(dict) then
                     TaskPlayAnim(cache.ped, dict, clip, 3.0, -3.0, 1800, 48, 0, false, false, false)
-                else
-                    RequestAnimDict(dict)
                 end
             end
 

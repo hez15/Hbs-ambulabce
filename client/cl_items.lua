@@ -84,6 +84,10 @@ local function OpenInjuryMenu(itemName, cfg)
             description = ('Uses 1x %s'):format(itemName),
             onSelect    = function()
                 CreateThread(function()
+                    if not RunMinigame then
+                        exports.qbx_core:Notify('Minigame system not ready — try again.', 'error')
+                        return
+                    end
                     local success = RunMinigame(_cfg.theme, _cfg.difficulty)
                     -- Always fire server event — server consumes item and handles outcome
                     TriggerServerEvent('hbs_ambulance:server:useItemOnInjury', itemName, _part, _sev, success)

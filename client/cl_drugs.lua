@@ -100,6 +100,12 @@ local function StartHigh(drugName, cfg)
         HBSUtils.Debug('drugs', 'overriding existing high: ' .. activeHigh.substance)
         ClearHighEffects()
     end
+    -- Clear any active come-down so its speed penalty doesn't stack under the new high
+    if activeComeDown then
+        HBSUtils.Debug('drugs', 'clearing come-down before new high: ' .. activeComeDown.substance)
+        ClearComeDownEffects()
+        activeComeDown = nil
+    end
 
     activeHigh = { substance = drugName, endTime = GetGameTimer() + (cfg.duration * 1000), cfg = cfg }
     HBSUtils.Debug('drugs', ('high started: %s duration=%ds'):format(drugName, cfg.duration))

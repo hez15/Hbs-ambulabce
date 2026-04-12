@@ -168,31 +168,47 @@ RegisterNetEvent('hbs_ambulance:server:useItemOnInjury', function(itemName, part
         cid, part, claimedSev, tostring(treatCfg.downgradeTo)))
 end)
 
--- ── Civilian revive (first aid kit on downed player) ─────────────────────────
+-- ── Civilian revive (first aid kit on downed player, 5% success chance) ─────
 
 RegisterNetEvent('hbs_ambulance:server:civilianRevive', function(itemName, targetSrc)
     local src = source
     local cfg = HBSConfig.MedicalItems[itemName]
     if not cfg or not cfg.canCivilianRevive then return end
 
+    -- Validate target is actually downed BEFORE consuming the item
+    if not DownedPlayers[targetSrc] then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'Target is not downed.')
+        return
+    end
+
     -- Must have the item
     if exports.ox_inventory:GetItemCount(src, itemName) < 1 then return end
     exports.ox_inventory:RemoveItem(src, itemName, 1)
 
-    -- Revive the player — keeps injuries (they're still hurt, just conscious)
-    if not DownedPlayers[targetSrc] then return end
+    -- 5% chance of success — civilian first aid is better than nothing, but far from reliable
+    if math.random() > 0.05 then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
+            'First aid was not enough — this patient needs a paramedic.')
+        TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'inform',
+            'Someone tried to help you. Hold on — you still need EMS.')
+        return
+    end
+
     DownedPlayers[targetSrc] = nil
     HBS.Set(targetSrc, 'isDowned', false)
     HBS.Set(targetSrc, 'triage', nil)
 
-    -- Give them low HP — they're up but in bad shape
-    TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 120)
-
+    -- Barely alive — they need EMS follow-up
+    TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 106)
     TriggerClientEvent('qbx_medical:client:playerRevived', targetSrc)
     TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
     TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'inform',
-        'You were revived by a bystander. Seek medical attention.')
+        'A bystander stabilised you with a first aid kit. Find EMS immediately.')
+    TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
+        'First aid worked! This person is barely stable — get them to a hospital.')
     TriggerEvent('hbs:server:broadcastDownedBlips')
+    HBSLog('civilianRevive', ('bystander src=%s revived target=%s with %s'):format(
+        tostring(src), tostring(targetSrc), itemName))
 end)
 
 -- ── Drug use ──────────────────────────────────────────────────────────────────

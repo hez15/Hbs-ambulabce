@@ -392,17 +392,17 @@ RegisterNetEvent('hbs_ambulance:server:fullSurgery', function(targetSrc)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat * 3)
 end)
 
--- ── Civilian CPR (non-EMS bystander, 30% chance, barely-alive revival) ──────
+-- ── Civilian CPR (non-EMS bystander, 5% chance, barely-alive revival) ───────
 
 RegisterNetEvent('hbs_ambulance:server:civilianCPR', function(targetSrc)
     local src = source
     if HBSUtils.IsEMS(src) then return end  -- EMS has proper revive
     if not DownedPlayers[targetSrc] then return end
 
-    -- 30% chance of success
-    if math.random() > 0.30 then
+    -- 5% chance of success — untrained CPR rarely saves a life
+    if math.random() > 0.05 then
         TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
-            'CPR unsuccessful — the patient still needs professional help.')
+            'CPR unsuccessful — this patient needs a paramedic.')
         return
     end
 
