@@ -641,30 +641,37 @@ exports.ox_target:addGlobalPlayer({
         icon        = 'fas fa-hands',
         distance    = 2.0,
         canInteract = function(entity)
-            if HBSIsEMS() then return false end  -- EMS uses proper revive
+            if HBSIsEMS() then return false end  -- EMS uses the proper revive option
             return PedIsDowned(entity)
         end,
         onSelect    = function(data)
             local srv = PedToServerId(data.entity)
             if not srv then return end
             CreateThread(function()
+                -- Notify the helper of the low success odds before they commit 15 seconds
+                exports.qbx_core:Notify('Performing CPR — 5% chance of success.', 'inform', 5000)
+
                 local dict = 'missambulance'
                 local clip = 'amb_action_treat_a_doctor'
-                RequestAnimDict(dict)
-                local t = 0
-                while not HasAnimDictLoaded(dict) and t < 30 do Wait(100); t = t + 1 end
+                if not HasAnimDictLoaded(dict) then
+                    RequestAnimDict(dict)
+                    local t = 0
+                    while not HasAnimDictLoaded(dict) and t < 30 do Wait(100); t = t + 1 end
+                end
 
-                if lib.progressCircle({
+                local completed = lib.progressCircle({
                     duration     = 15000,
-                    label        = 'Performing CPR...',
+                    label        = 'Performing CPR... (5% chance)',
                     useWhileDead = false,
                     canCancel    = true,
                     disable      = { move = true, car = true, combat = true },
                     anim         = { dict = dict, clip = clip, flag = 49 },
-                }) then
+                })
+                ClearPedTasks(cache.ped)
+
+                if completed then
                     TriggerServerEvent('hbs_ambulance:server:civilianCPR', srv)
                 end
-                ClearPedTasks(cache.ped)
             end)
         end,
     },

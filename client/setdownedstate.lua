@@ -94,18 +94,29 @@ end)
 
 -- ── Revive hooks ──────────────────────────────────────────────────────────
 
+-- Flag set just before qbx_medical's event fires for CPR/bystander revivals.
+-- Prevents the qbx hook from clearing injuries that the civilian didn't heal.
+local _cprRevive = false
+
+RegisterNetEvent('hbs_ambulance:client:markCPRRevive', function()
+    _cprRevive = true
+end)
+
 -- qbx_medical revive (hospital check-in / standard revive)
 RegisterNetEvent('qbx_medical:client:playerRevived', function()
     HideDeathScreen()
-    TriggerEvent('hbs:client:clearInjuries')
-    TriggerEvent('hbs:client:setStress', 0)
+    if not _cprRevive then
+        -- Full recovery: hospital or EMS path clears injuries + stress
+        TriggerEvent('hbs:client:clearInjuries')
+        TriggerEvent('hbs:client:setStress', 0)
+    end
+    _cprRevive  = false
     EmsNotified = false
 end)
 
--- Our EMS research revive path
+-- Full EMS revive (injuries cleared server-side before this fires)
 RegisterNetEvent('hbs_ambulance:client:revived', function()
     HideDeathScreen()
-    SetEntityHealth(cache.ped, 200)
     SetEntityInvincible(cache.ped, false)
     ClearPedTasksImmediately(cache.ped)
     TriggerEvent('hbs:client:clearInjuries')
@@ -122,6 +133,46 @@ RegisterNetEvent('hbs_ambulance:client:revived', function()
             TaskPlayAnim(cache.ped, 'move_m@drunk@a', 'idle',
                 4.0, -4.0, 3000, 49, 0, false, false, false)
         end
+    end)
+end)
+
+-- Civilian CPR / first aid kit revive — barely alive.
+-- HP is set to 106 server-side. Injuries are KEPT. No stress clear.
+RegisterNetEvent('hbs_ambulance:client:cprRevived', function()
+    HideDeathScreen()
+    SetEntityInvincible(cache.ped, false)
+    ClearPedTasksImmediately(cache.ped)
+    -- Do NOT override HP — server already set it to 106 via addHealth/setHealth
+    -- Do NOT clear injuries — patient is still critically wounded
+
+    CreateThread(function()
+        -- Eyes opening: instant black then slow fade in
+        DoScreenFadeOut(0)
+        Wait(500)
+        DoScreenFadeIn(2500)
+
+        -- Struggle to get up
+        local dict = 'move_m@drunk@a'
+        if not HasAnimDictLoaded(dict) then
+            RequestAnimDict(dict)
+            local t = 0
+            while not HasAnimDictLoaded(dict) and t < 20 do Wait(100); t = t + 1 end
+        end
+        if HasAnimDictLoaded(dict) then
+            TaskPlayAnim(cache.ped, dict, 'idle', 3.0, -3.0, 5000, 49, 0, false, false, false)
+        end
+
+        -- Disorientation: shake + blur
+        ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.10)
+        SetTimecycleModifier('drug_flying_in_sky')
+        SetTimecycleModifierStrength(0.45)
+
+        Wait(2500)
+        ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.0)
+        Wait(2000)
+        ClearTimecycleModifier()
+
+        exports.qbx_core:Notify('You are barely alive — find EMS immediately!', 'error', 10000)
     end)
 end)
 

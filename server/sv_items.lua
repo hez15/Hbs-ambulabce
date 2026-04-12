@@ -198,12 +198,16 @@ RegisterNetEvent('hbs_ambulance:server:civilianRevive', function(itemName, targe
     HBS.Set(targetSrc, 'isDowned', false)
     HBS.Set(targetSrc, 'triage', nil)
 
-    -- Barely alive — they need EMS follow-up
+    -- Barely alive — 6 HP above the death floor; injuries are kept
     TriggerClientEvent('hbs_ambulance:client:setHealth', targetSrc, 106)
+
+    -- Mark CPR-style revive BEFORE qbx event so the hook does not wipe injuries
+    TriggerClientEvent('hbs_ambulance:client:markCPRRevive', targetSrc)
     TriggerClientEvent('qbx_medical:client:playerRevived', targetSrc)
-    TriggerClientEvent('hbs_ambulance:client:revived', targetSrc)
-    TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'inform',
-        'A bystander stabilised you with a first aid kit. Find EMS immediately.')
+
+    -- Play "waking up" sequence (no HP override, no injury clear)
+    TriggerClientEvent('hbs_ambulance:client:cprRevived', targetSrc)
+
     TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
         'First aid worked! This person is barely stable — get them to a hospital.')
     TriggerEvent('hbs:server:broadcastDownedBlips')
