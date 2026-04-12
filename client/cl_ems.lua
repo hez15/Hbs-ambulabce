@@ -125,6 +125,7 @@ local EMS_ANIM_DICTS = {
     'mp_suicide',
     'mini@crate_search@std@ps',
     'move_m@drunk@a',
+    'mini@cpr@char_b@cpr_str',   -- civilian CPR pump-chest
 }
 
 -- Preload all EMS animation dicts on player load so there is no
@@ -651,8 +652,8 @@ exports.ox_target:addGlobalPlayer({
                 -- Notify the helper of the low success odds before they commit 15 seconds
                 exports.qbx_core:Notify('Performing CPR — 5% chance of success.', 'inform', 5000)
 
-                local dict = 'missambulance'
-                local clip = 'amb_action_treat_a_doctor'
+                local dict = 'mini@cpr@char_b@cpr_str'
+                local clip = 'cpr_pumpchest'
                 if not HasAnimDictLoaded(dict) then
                     RequestAnimDict(dict)
                     local t = 0
