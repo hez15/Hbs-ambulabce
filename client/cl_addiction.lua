@@ -76,6 +76,21 @@ local function ApplyAddictionEffects()
         end)
     end
 
+    -- RP Emotes addict emote (level 2+)
+    -- Skipped if the vomit scenario is already playing (they would conflict).
+    local rpCfg = HBSConfig.Addiction.rpEmotes
+    if rpCfg and rpCfg.enabled and highest >= 2 and not vomitCooldown then
+        local chance = rpCfg.chance and rpCfg.chance[highest] or 0.40
+        if math.random() < chance then
+            CreateThread(function()
+                HBSUtils.Debug('addiction', ('addict emote: level=%d emote=%s'):format(highest, rpCfg.emote))
+                TriggerEvent(rpCfg.event, { rpCfg.emote })
+                Wait(rpCfg.duration or 6000)
+                TriggerEvent(rpCfg.event, { false })  -- stop emote
+            end)
+        end
+    end
+
     if not withdrawalActive then
         withdrawalActive = true
         SendNUIMessage({ action = 'setIcon', icon = 'withdrawal', visible = true })

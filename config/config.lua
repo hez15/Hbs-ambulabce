@@ -143,6 +143,25 @@ HBSConfig.Addiction = {
         [3] = { handTremors = true, speedMult = 0.90, visualDistortion = true },
         [4] = { handTremors = true, speedMult = 0.80, visualDistortion = true, vomit = true, healthDrain = 0.5 },
     },
+
+    -- RP Emotes integration: play the addict emote during withdrawal ticks.
+    -- Fires at addiction level 2+ with the probability below.
+    -- Set enabled = false to disable entirely.
+    -- event: the rpemotes trigger — 'animations:client:EmoteCommandStart' for most servers.
+    -- emote: the emote name passed to that event (check your rpemotes emote list).
+    -- duration: how long (ms) to hold the emote before auto-cancelling it.
+    -- chance: per-tick roll per level (0.0–1.0); not played if vomit is already active.
+    rpEmotes = {
+        enabled  = true,
+        event    = 'animations:client:EmoteCommandStart',
+        emote    = 'addicted',
+        duration = 6000,
+        chance   = {
+            [2] = 0.30,   -- 30% per tick at Moderate
+            [3] = 0.55,   -- 55% per tick at Severe
+            [4] = 0.80,   -- 80% per tick at Critical
+        },
+    },
 }
 
 -- ── Substances ────────────────────────────────────────────────────────────────
