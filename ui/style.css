@@ -791,6 +791,117 @@ html, body {
     border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
+/* ── Knockout Screen ──────────────────────────────────────── */
+
+#knockout-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+    animation: fadeIn 0.3s ease;
+    pointer-events: none; /* player can still move mouse/look around */
+}
+
+/* Dark vignette overlay */
+#knockout-screen::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center,
+        rgba(0, 0, 0, 0.55) 20%,
+        rgba(0, 0, 0, 0.88) 100%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Floating stars orbit around center */
+#ko-stars {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.ko-star {
+    position: absolute;
+    font-size: 20px;
+    color: #ffe87a;
+    text-shadow: 0 0 8px rgba(255, 220, 80, 0.9);
+    animation: koOrbit 1.1s linear infinite;
+    transform-origin: 0 0;
+}
+
+/* Stagger the 5 stars evenly around a circle */
+.ko-star:nth-child(1) { animation-delay:  0.00s; --ko-angle:   0deg; }
+.ko-star:nth-child(2) { animation-delay: -0.22s; --ko-angle:  72deg; }
+.ko-star:nth-child(3) { animation-delay: -0.44s; --ko-angle: 144deg; }
+.ko-star:nth-child(4) { animation-delay: -0.66s; --ko-angle: 216deg; }
+.ko-star:nth-child(5) { animation-delay: -0.88s; --ko-angle: 288deg; }
+
+@keyframes koOrbit {
+    0%   { transform: rotate(var(--ko-angle, 0deg)) translateX(68px) rotate(0deg);   opacity: 1;   }
+    50%  { opacity: 0.6; }
+    100% { transform: rotate(calc(var(--ko-angle, 0deg) + 360deg)) translateX(68px) rotate(-360deg); opacity: 1; }
+}
+
+#ko-box {
+    text-align: center;
+    user-select: none;
+}
+
+#ko-title {
+    font-size: 36px;
+    font-weight: 900;
+    color: #fde047;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    text-shadow:
+        0 0 18px rgba(253, 224, 71, 0.80),
+        0 0 40px rgba(253, 180, 20, 0.50);
+    margin-bottom: 10px;
+    animation: koPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes koPulse {
+    0%, 100% { opacity: 1;    transform: scale(1.00); }
+    50%       { opacity: 0.72; transform: scale(0.97); }
+}
+
+#ko-sub {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.8px;
+    margin-bottom: 20px;
+}
+
+#ko-bar-bg {
+    width: 220px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 0 auto 10px;
+}
+
+#ko-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #facc15, #fde047);
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
+
+#ko-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.28);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
 /* ── Death Screen ─────────────────────────────────────────── */
 
 #death-screen {

@@ -34,6 +34,8 @@ window.addEventListener('message', function (e) {
         case 'showResearchTerminal': showResearchTerminal(data);       break;
         case 'hideResearchTerminal': hideResearchTerminal();           break;
         case 'updateResearch':       rtUpdateResearch(data.research);  break;
+        case 'showKnockoutScreen': showKnockoutScreen(data.duration || 5000); break;
+        case 'hideKnockoutScreen': hideKnockoutScreen();                     break;
         case 'showDeathScreen':showDeathScreen(data.bleedoutMs, data.resourceName); break;
         case 'hideDeathScreen':hideDeathScreen();                     break;
         case 'callEMSResult':  onCallEMSResult(data.success, data.cooldown); break;
@@ -466,6 +468,47 @@ function setIcon(icon, visible) {
 }
 
 // ── Death screen ──────────────────────────────────────────────────────────────
+
+// ── Knockout Screen ───────────────────────────────────────────────────────────
+
+let koTimer = null;
+
+function showKnockoutScreen(durationMs) {
+    const screen = document.getElementById('knockout-screen');
+    screen.classList.remove('hidden');
+
+    // Reset bar
+    const fill = document.getElementById('ko-bar-fill');
+    fill.style.transition = 'none';
+    fill.style.width = '0%';
+
+    // Animate fill over duration using rAF for smooth progress
+    if (koTimer) clearInterval(koTimer);
+    const startTs  = performance.now();
+    const endTs    = startTs + durationMs;
+
+    function koTick() {
+        const now  = performance.now();
+        const pct  = Math.min(100, ((now - startTs) / durationMs) * 100);
+        fill.style.width = pct + '%';
+        if (now < endTs) {
+            koTimer = requestAnimationFrame(koTick);
+        } else {
+            fill.style.width = '100%';
+            // Auto-hide after bar completes
+            hideKnockoutScreen();
+        }
+    }
+
+    koTimer = requestAnimationFrame(koTick);
+}
+
+function hideKnockoutScreen() {
+    if (koTimer) { cancelAnimationFrame(koTimer); koTimer = null; }
+    document.getElementById('knockout-screen').classList.add('hidden');
+}
+
+// ── Death Screen ──────────────────────────────────────────────────────────────
 
 let bleedoutTimer = null;
 let bleedoutEnd   = null;

@@ -219,6 +219,9 @@ AddEventHandler('hbs:client:meleeKnockout', function()
     Wait(300)
     DoScreenFadeIn(900)
 
+    -- Show knockout NUI overlay (no NUI focus — player can still look around)
+    SendNUIMessage({ action = 'showKnockoutScreen', duration = 5000 })
+
     ShakeGameplayCam('MEDIUM_EXPLOSION_SHAKE', 0.35)
     SetTimecycleModifier('drug_flying_in_sky')
     SetTimecycleModifierStrength(0.5)
@@ -229,6 +232,7 @@ AddEventHandler('hbs:client:meleeKnockout', function()
 
     Wait(3500)
     ClearTimecycleModifier()
+    SendNUIMessage({ action = 'hideKnockoutScreen' })
     isKnockedOut = false
     HBSUtils.Debug('injury', 'knockout recovered')
 end)
