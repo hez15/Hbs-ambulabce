@@ -83,7 +83,9 @@ The treat item is **always consumed** whether the minigame passes or fails.
 - IV Therapy unlock (Tier 3): +75 HP total (additional 60 HP)
 
 **Self-treatment:**
-Civilians can use bandage, firstaidkit, splint, morphine, and painkiller from their inventory. A progress circle plays with an appropriate animation before the effect applies.
+Civilians can use bandage, firstaidkit, splint, morphine, painkiller, bloodbag, and methadone from their inventory. A progress circle plays with an appropriate animation before the effect applies.
+
+When a healing item (bandage, morphine, etc.) is used and there are matching injuries, a context menu lets the player pick which wound to treat — a minigame then determines whether the treatment succeeds. If the item has secondary effects (HP restore, stress reduce) but no matching injuries exist, those effects still apply without the minigame.
 
 ---
 
@@ -199,13 +201,16 @@ Each disease advances one stage every `progressTime` seconds (default: 10 min fo
 | 1 | -5% speed |
 | 2 | -10% speed, fever flashes |
 
+**Self-treatment (civilians):**
+Players with antibiotics in their inventory can use the item to reduce their own disease by one stage per use. Stage 1 → fully cleared. This appears as a context menu listing all active diseases. The antibiotic is consumed win or lose.
+
 **EMS workflow:**
 1. **Collect Disease Sample** (ox_target on any infected player — downed or standing)
 2. Take sample to the **Research Terminal** at the EMS base
 3. Analyze sample (consumes it, adds to server-wide research counter)
 4. Once enough samples are collected, disease is fully researched
 5. **Examine Patient** (Tier 2) — see active diseases and stages
-6. **Treat** via the examine menu — consumes one antibiotic
+6. **Treat** via the examine menu — consumes one antibiotic and clears the disease entirely in one use
 
 ---
 
@@ -355,8 +360,9 @@ The SVG medical HUD displays in the top-left while on duty:
 | `painkiller` | -15 stress, +10 HP, withdrawal relief — addictive | ✓ |
 | `splint` | Heals arm/leg fractures | ✓ |
 | `methadone` | Reduces addiction by 1 level | ✓ |
-| `antibiotic` | EMS treats diseases (flu, infection) | ✓ |
+| `antibiotic` | EMS treats diseases (full clear); civilians self-treat own disease (-1 stage per use) | ✓ |
 | `disease_sample` | Collected by EMS from infected patients; analysed at Research Terminal | — |
+| `ems_backpack` | Equipment item; available from armory | ✓ |
 | `vodka` | Drunk effect (4 min), -18% speed, -25 stress | — |
 | `beer` | Mild drunk (2 min), -8% speed, -15 stress | — |
 
@@ -397,6 +403,13 @@ client = { event = 'hbs_ambulance:client:useItem' }
     close = true,
     description = 'A cold one. Mild impairment.',
     client = { event = 'hbs_ambulance:client:useItem' },
+},
+['ems_backpack'] = {
+    label = 'EMS Backpack',
+    weight = 500,
+    stack = false,
+    close = false,
+    description = 'Standard EMS field equipment pack.',
 },
 ```
 

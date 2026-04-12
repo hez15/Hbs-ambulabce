@@ -271,6 +271,13 @@ HBSConfig.MedicalItems = {
         withdrawalRelief = true, addictionReduce = true, reduceAmount = 1,
         animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
     },
+    antibiotic = {
+        label = 'Antibiotic', useTime = 8,
+        -- selfTreatDisease: civilians can reduce their own disease stage by 1.
+        -- EMS can still fully clear diseases via the treat target menu (sv_disease.lua).
+        selfTreatDisease = true,
+        animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
+    },
     vodka = {
         label = 'Vodka', useTime = 3,
         animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },

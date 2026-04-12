@@ -139,6 +139,36 @@ local function UseItem(name)
         return
     end
 
+    -- Disease self-treatment (antibiotic)
+    if cfg.selfTreatDisease then
+        local diseases = HBSState.diseases or {}
+        if not next(diseases) then
+            exports.qbx_core:Notify('You have no active disease to treat.', 'error')
+            return
+        end
+        local options = {}
+        for disease, stage in pairs(diseases) do
+            local dcfg = HBSConfig.Diseases and HBSConfig.Diseases[disease]
+            local dlabel = dcfg and dcfg.label or disease
+            local _d = disease
+            options[#options + 1] = {
+                title       = dlabel .. ' — Stage ' .. stage,
+                description = 'Apply 1x antibiotic (-1 stage)',
+                onSelect    = function()
+                    CreateThread(function()
+                        if RunProgress(cfg, 'Applying ' .. (cfg.label or name) .. '...') then
+                            SetCooldown(name)
+                            TriggerServerEvent('hbs_ambulance:server:selfTreatDisease', name, _d)
+                        end
+                    end)
+                end,
+            }
+        end
+        lib.registerContext({ id = 'hbs_self_treat_disease', title = 'Treat Disease', options = options })
+        lib.showContext('hbs_self_treat_disease')
+        return
+    end
+
     -- Civilian revive (first aid kit on downed player)
     if cfg.canCivilianRevive then
         local targetSrc = FindDownedNearby(3.0)
@@ -165,10 +195,41 @@ local function UseItem(name)
         -- No downed player nearby — fall through to self-heal
     end
 
-    -- Healing items → open per-injury selection menu with minigame
+    -- Healing items → open per-injury selection menu with minigame.
+    -- If no matching injuries exist but the item also has secondary effects
+    -- (HP restore, stress reduce, addiction) fall through to plain useItem
+    -- so those effects still apply.
     if cfg.heals and #cfg.heals > 0 then
-        OpenInjuryMenu(name, cfg)
-        return
+        local canTreat = false
+        if HBSConfig.TreatMap then
+            local healSet = {}
+            for _, sev in ipairs(cfg.heals) do healSet[sev] = true end
+            for part, currentSev in pairs(HBSState.injuries) do
+                if healSet[currentSev] then
+                    local partOk = false
+                    for _, hp in ipairs(cfg.healParts or { 'any' }) do
+                        if hp == 'any' or hp == part then partOk = true; break end
+                    end
+                    if partOk then
+                        local tc = HBSConfig.TreatMap[currentSev]
+                        if tc and tc.item == name then canTreat = true; break end
+                    end
+                end
+            end
+        end
+
+        if canTreat then
+            OpenInjuryMenu(name, cfg)
+            return
+        end
+
+        -- No matching injuries — if there are no secondary effects either, tell the player
+        local hasSecondary = cfg.healthRestore or cfg.stressReduce or cfg.withdrawalRelief or cfg.addictionReduce or cfg.addictive
+        if not hasSecondary then
+            exports.qbx_core:Notify('No injuries that ' .. (cfg.label or name) .. ' can treat.', 'error')
+            return
+        end
+        -- Fall through to plain useItem to apply HP/stress/addiction effects
     end
 
     -- Non-healing items (bloodbag, painkiller, methadone) — plain progress bar

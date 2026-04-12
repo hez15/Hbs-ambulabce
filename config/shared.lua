@@ -10,6 +10,12 @@ return {
         vehicle = {
             vec4(294.578, -574.761, 43.179, 35.79),
             vec4(-234.28, 6329.16, 32.15, 222.5),
+            vec4(-672.4677, 350.6228, 77.7072, 83.0468),  -- HBS base
+        },
+        -- Explicit ped positions that override the auto-calculated offset.
+        -- Key = index matching the vehicle/helicopter table above.
+        vehiclePedOverrides = {
+            [3] = vec4(-671.9983, 354.1741, 77.7699, 176.0015),  -- HBS base dispatcher
         },
         helicopter = {
             vec4(351.58, -587.45, 74.16, 160.5),
@@ -37,6 +43,8 @@ return {
                     { name = 'painkiller',              price = 0 },
                     { name = 'methadone',               price = 0 },
                     { name = 'antibiotic',              price = 0 },
+                    -- Equipment
+                    { name = 'ems_backpack',            price = 0 },
                 },
                 -- vec4: x/y/z = position, w = box zone rotation (heading)
                 locations = {

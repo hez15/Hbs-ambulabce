@@ -278,19 +278,28 @@ end
 ---@param vehicles AuthorizedVehicles
 ---@param spawnCoords vector4  vehicle spawn point (ped stands beside it)
 ---@param pedIdx integer       unique index for target zone naming
-local function spawnGaragePed(vehicles, spawnCoords, pedIdx)
+---@param pedCoords vector4|nil  explicit ped position/heading; auto-calculated when nil
+local function spawnGaragePed(vehicles, spawnCoords, pedIdx, pedCoords)
     local model = `s_m_y_ems_01`
     RequestModel(model)
     local t = 0
     while not HasModelLoaded(model) and t < 50 do Wait(100); t = t + 1 end
     if not HasModelLoaded(model) then return end
 
-    -- Position the dispatcher 3m to the side of the spawn point
-    local rad = math.rad(spawnCoords.w + 90)
-    local px  = spawnCoords.x + math.sin(rad) * 3.0
-    local py  = spawnCoords.y - math.cos(rad) * 3.0
+    local px, py, pz, ph
+    if pedCoords then
+        -- Use explicitly configured position (no z offset — coords are exact)
+        px, py, pz, ph = pedCoords.x, pedCoords.y, pedCoords.z, pedCoords.w
+    else
+        -- Auto-position 3m to the side of the vehicle spawn point
+        local rad = math.rad(spawnCoords.w + 90)
+        px  = spawnCoords.x + math.sin(rad) * 3.0
+        py  = spawnCoords.y - math.cos(rad) * 3.0
+        pz  = spawnCoords.z - 1.0
+        ph  = spawnCoords.w + 180
+    end
 
-    local ped = CreatePed(4, model, px, py, spawnCoords.z - 1.0, spawnCoords.w + 180, false, true)
+    local ped = CreatePed(4, model, px, py, pz, ph, false, true)
     SetEntityInvincible(ped, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     FreezeEntityPosition(ped, true)
@@ -321,9 +330,11 @@ end
 
 ---Creates air and land garages to spawn vehicles at for EMS personnel
 CreateThread(function()
+    local pedOverrides = sharedConfig.locations.vehiclePedOverrides or {}
+
     for i, coords in ipairs(sharedConfig.locations.vehicle) do
         createGarage(config.authorizedVehicles, coords)
-        spawnGaragePed(config.authorizedVehicles, coords, i)
+        spawnGaragePed(config.authorizedVehicles, coords, i, pedOverrides[i])
     end
 
     for i, coords in ipairs(sharedConfig.locations.helicopter) do

@@ -289,6 +289,61 @@ lib.callback.register('hbs_ambulance:server:getResearchData', function(source)
     return { research = research, outbreaks = outbreaks }
 end)
 
+-- ── Civilian self-treat disease (antibiotic from inventory) ──────────────────
+-- Reduces the disease by one stage per antibiotic used.
+-- EMS full-clear (treatDisease) is a separate, faster path requiring patient_examine unlock.
+
+RegisterNetEvent('hbs_ambulance:server:selfTreatDisease', function(itemName, disease)
+    local src = source
+    local cfg = HBSConfig.MedicalItems[itemName]
+    if not cfg or not cfg.selfTreatDisease then return end
+
+    local diseaseCfg = HBSConfig.Diseases and HBSConfig.Diseases[disease]
+    if not diseaseCfg then return end
+
+    if exports.ox_inventory:GetItemCount(src, itemName) < 1 then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error',
+            ('No %s in your inventory.'):format(itemName))
+        return
+    end
+
+    local cid = HBSUtils.GetCitizenId(src)
+    if not cid then return end
+
+    local diseases = DB.LoadDiseases(cid)
+    if not diseases[disease] then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'You do not have that disease.')
+        return
+    end
+
+    -- Consume the antibiotic
+    exports.ox_inventory:RemoveItem(src, itemName, 1)
+
+    local currentStage = diseases[disease]
+    if currentStage <= 1 then
+        -- Stage 1 → fully cleared
+        DB.ClearDisease(cid, disease)
+        diseases[disease] = nil
+        HBS.Set(src, 'diseases', diseases)
+        TriggerClientEvent('hbs_ambulance:client:diseasesUpdate', src, diseases)
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
+            (diseaseCfg.label or disease) .. ' has been cleared.')
+    else
+        -- Reduce one stage
+        local newStage = currentStage - 1
+        DB.SaveDisease(cid, disease, newStage)
+        diseases[disease] = newStage
+        HBS.Set(src, 'diseases', diseases)
+        TriggerClientEvent('hbs_ambulance:client:diseasesUpdate', src, diseases)
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
+            ('Antibiotic working — %s reduced to Stage %d. Keep taking them.'):format(
+                diseaseCfg.label or disease, newStage))
+    end
+
+    HBSLog('selfTreatDisease', ('cid=%s treated %s with %s (was stage %d)'):format(
+        cid, disease, itemName, currentStage))
+end)
+
 -- ── Export for external scripts ────────────────────────────────────────────
 
 exports('contractDisease', function(src, disease, stage)
