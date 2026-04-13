@@ -246,12 +246,13 @@ HBSConfig.MedicalItems = {
     bandage = {
         label = 'Bandage', useTime = 5,
         heals = { 'scratch', 'minor' }, healParts = { 'any' },
+        healthRestore = 12,   -- each treated wound restores 12 HP (4 bandages ≈ +48 HP)
         animation = { dict = 'mp_suicide', anim = 'pill', flag = 49 },
     },
     firstaidkit = {
         label = 'First Aid Kit', useTime = 10,
         heals = { 'scratch', 'minor', 'fracture' }, healParts = { 'any' },
-        healthRestore = 30,
+        healthRestore = 25,   -- stronger all-rounder — also applied on civilian revive path
         canCivilianRevive = true,   -- civilians can use this on downed players
         civilianReviveTime = 20,    -- seconds (longer than EMS defibrillator)
         animation = { dict = 'mini@crate_search@std@ps', anim = 'crate_search_ps_std', flag = 49 },
@@ -283,6 +284,7 @@ HBSConfig.MedicalItems = {
     splint = {
         label = 'Splint', useTime = 8,
         heals = { 'fracture' }, healParts = { 'left_leg', 'right_leg', 'left_arm', 'right_arm' },
+        healthRestore = 20,   -- fractures cause significant HP loss; splinting restores some
         animation = { dict = 'mini@crate_search@std@ps', anim = 'crate_search_ps_std', flag = 49 },
     },
     methadone = {
