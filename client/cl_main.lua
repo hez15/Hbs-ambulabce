@@ -106,3 +106,106 @@ RegisterNetEvent('hbs_ambulance:client:notify', function(ntype, msg)
 end)
 
 function IsHBSLoaded() return HBSState.loaded end
+
+-- ── /checkme — self medical status ───────────────────────────────────────────
+
+local SEV_ICONS = { scratch = '🟡', minor = '🟠', fracture = '🔵', critical = '🔴' }
+local SEV_LABEL = { scratch = 'Scratch', minor = 'Minor Wound', fracture = 'Fracture', critical = 'Critical' }
+
+RegisterCommand('checkme', function()
+    if not IsHBSLoaded() then
+        HBSNotify('Medical data not loaded yet.', 'error')
+        return
+    end
+
+    local ped    = cache.ped
+    local maxHp  = GetEntityMaxHealth(ped)
+    local hp     = GetEntityHealth(ped)
+    local hpPct  = math.floor(math.max(0, (hp - 100) / (maxHp - 100)) * 100)
+    local stress = math.floor((HBSState.stress or 0))
+
+    local options = {}
+
+    -- Health
+    options[#options + 1] = {
+        title       = 'Health',
+        description = hpPct .. '%',
+        icon        = 'fas fa-heart',
+        iconColor   = hpPct < 30 and '#e03030' or (hpPct < 60 and '#f97316' or '#22c55e'),
+        disabled    = true,
+    }
+
+    -- Stress
+    options[#options + 1] = {
+        title       = 'Stress',
+        description = stress .. '%',
+        icon        = 'fas fa-brain',
+        iconColor   = stress > 75 and '#e03030' or (stress > 40 and '#f97316' or '#94a3b8'),
+        disabled    = true,
+    }
+
+    -- Injuries
+    local injuryCount = 0
+    for part, sev in pairs(HBSState.injuries) do
+        injuryCount = injuryCount + 1
+        local partLabel = part:gsub('_', ' '):gsub('^%l', string.upper)
+        options[#options + 1] = {
+            title       = (SEV_ICONS[sev] or '⚪') .. ' ' .. partLabel,
+            description = SEV_LABEL[sev] or sev,
+            icon        = 'fas fa-bone',
+            iconColor   = sev == 'critical' and '#e03030' or (sev == 'fracture' and '#60a5fa' or '#f97316'),
+            disabled    = true,
+        }
+    end
+    if injuryCount == 0 then
+        options[#options + 1] = {
+            title = '✅ No Active Injuries',
+            icon  = 'fas fa-check',
+            iconColor = '#22c55e',
+            disabled = true,
+        }
+    end
+
+    -- Addiction
+    local addLabels = HBSConfig.Addiction and HBSConfig.Addiction.levelLabels or {}
+    local hasAddiction = false
+    for sub, level in pairs(HBSState.addiction or {}) do
+        if level > 0 then
+            hasAddiction = true
+            local subCfg = HBSConfig.Substances and HBSConfig.Substances[sub]
+            options[#options + 1] = {
+                title       = (subCfg and subCfg.label or sub) .. ' Dependency',
+                description = (addLabels[level] or 'Level ' .. level) .. ' (level ' .. level .. '/4)',
+                icon        = 'fas fa-pills',
+                iconColor   = level >= 3 and '#e03030' or '#a78bfa',
+                disabled    = true,
+            }
+        end
+    end
+
+    -- Diseases
+    local hasDisease = false
+    for disease, stage in pairs(HBSState.diseases or {}) do
+        hasDisease = true
+        local dcfg = HBSConfig.Diseases and HBSConfig.Diseases[disease]
+        options[#options + 1] = {
+            title       = (dcfg and dcfg.label or disease),
+            description = 'Stage ' .. stage .. ' / ' .. (dcfg and dcfg.stages or '?'),
+            icon        = 'fas fa-virus',
+            iconColor   = '#f97316',
+            disabled    = true,
+        }
+    end
+
+    if not hasAddiction and not hasDisease then
+        options[#options + 1] = {
+            title     = '✅ Clean — No Dependency or Disease',
+            icon      = 'fas fa-shield-heart',
+            iconColor = '#22c55e',
+            disabled  = true,
+        }
+    end
+
+    lib.registerContext({ id = 'hbs_self_check', title = '🏥 My Medical Status', options = options })
+    lib.showContext('hbs_self_check')
+end, false)
