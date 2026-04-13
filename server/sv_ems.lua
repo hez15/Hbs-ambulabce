@@ -392,6 +392,33 @@ RegisterNetEvent('hbs_ambulance:server:fullSurgery', function(targetSrc)
     AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat * 3)
 end)
 
+-- ── EMS administer blood bag ──────────────────────────────────────────────────
+
+RegisterNetEvent('hbs_ambulance:server:administerBloodbag', function(targetSrc)
+    local src = source
+    if not HBSUtils.IsEMS(src) then return end
+
+    if exports.ox_inventory:GetItemCount(src, 'bloodbag') < 1 then
+        TriggerClientEvent('hbs_ambulance:client:notify', src, 'error', 'No Blood Bag in your inventory.')
+        return
+    end
+
+    exports.ox_inventory:RemoveItem(src, 'bloodbag', 1)
+
+    local cfg     = HBSConfig.MedicalItems['bloodbag']
+    local restore = cfg and cfg.healthRestore or 50
+    TriggerClientEvent('hbs_ambulance:client:addHealth', targetSrc, restore)
+
+    TriggerClientEvent('hbs_ambulance:client:notify', targetSrc, 'success',
+        ('EMS administered a blood transfusion (+%d HP).'):format(restore))
+    TriggerClientEvent('hbs_ambulance:client:notify', src, 'success',
+        ('Blood Bag administered — patient HP +%d.'):format(restore))
+
+    AwardXP(src, HBSConfig.EMSResearch.xpRewards.treat)
+    HBSLog('bloodbag', ('ems src=%s administered bloodbag to target=%s (+%d HP)'):format(
+        tostring(src), tostring(targetSrc), restore))
+end)
+
 -- ── Civilian CPR (non-EMS bystander, 5% chance, barely-alive revival) ───────
 
 RegisterNetEvent('hbs_ambulance:server:civilianCPR', function(targetSrc)

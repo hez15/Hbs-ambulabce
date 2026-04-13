@@ -458,6 +458,33 @@ exports.ox_target:addGlobalPlayer({
         end,
     },
     {
+        name        = 'hbs_ems_bloodbag',
+        label       = 'Administer Blood Bag',
+        icon        = 'fas fa-droplet',
+        distance    = 2.5,
+        canInteract = function()
+            if not HBSIsEMS() then return false end
+            return exports.ox_inventory:Search('count', 'bloodbag') >= 1
+        end,
+        onSelect    = function(data)
+            local srv = PedToServerId(data.entity)
+            if not srv then return end
+            CreateThread(function()
+                PlayAnim('missambulance', 'amb_action_treat_a_doctor', 49)
+                if lib.progressCircle({
+                    duration     = 8000,
+                    label        = 'Administering blood transfusion...',
+                    useWhileDead = false,
+                    canCancel    = true,
+                    disable      = { move = true, car = true, combat = true },
+                }) then
+                    TriggerServerEvent('hbs_ambulance:server:administerBloodbag', srv)
+                end
+                ClearPedTasks(cache.ped)
+            end)
+        end,
+    },
+    {
         name        = 'hbs_ems_vitals',
         label       = 'Check Vitals',
         icon        = 'fas fa-heart-pulse',
